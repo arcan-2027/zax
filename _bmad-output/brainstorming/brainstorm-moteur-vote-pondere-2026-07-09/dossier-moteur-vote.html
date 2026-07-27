@@ -1,0 +1,272 @@
+<title>ZAX // Moteur de Vote Pondéré — Dossier de conception</title>
+<style>
+  :root{
+    --bg:#050805; --surface:#071407; --border:#1A5C1A;
+    --p:#39FF14; --mid:#1DB308; --dim:#0A5C0A; --amber:#FFB000; --danger:#8B0000;
+    --scan:rgba(0,0,0,.28);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--p);
+    font-family:'Share Tech Mono',ui-monospace,'Courier New',monospace;line-height:1.5;overflow-x:hidden}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:9;
+    background:repeating-linear-gradient(0deg,transparent 0 2px,var(--scan) 2px 3px);opacity:.5}
+  body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:8;
+    background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,.72) 100%)}
+  .wrap{max-width:1040px;margin:0 auto;padding:28px 20px 90px;position:relative;z-index:1}
+  h1,h2,h3,.vt{font-family:'VT323',monospace}
+  a{color:var(--amber)}
+  .glow{text-shadow:0 0 8px var(--p),0 0 20px rgba(57,255,20,.4)}
+  code,.mono{font-family:'Share Tech Mono',monospace}
+
+  header{border:1px solid var(--border);background:var(--surface);padding:22px 20px;position:relative;margin-bottom:26px}
+  header::before,header::after{content:"";position:absolute;width:12px;height:12px;border:2px solid var(--p)}
+  header::before{top:-2px;left:-2px;border-right:0;border-bottom:0}
+  header::after{bottom:-2px;right:-2px;border-left:0;border-top:0}
+  .kicker{color:var(--mid);font-size:14px;letter-spacing:3px;text-transform:uppercase}
+  h1{font-size:clamp(30px,5.4vw,54px);margin:.08em 0 .12em;letter-spacing:1px}
+  .sub{color:var(--dim);font-size:15px;max-width:70ch}
+  .cursor{display:inline-block;width:11px;height:1.05em;background:var(--p);vertical-align:-2px;animation:bl 1.05s steps(1) infinite;box-shadow:0 0 8px var(--p)}
+  @keyframes bl{50%{opacity:0}}
+  .meta{display:flex;flex-wrap:wrap;gap:8px 22px;margin-top:14px;font-size:13px;color:var(--mid)}
+  .meta b{color:var(--p);font-weight:400}
+
+  section{margin:40px 0}
+  h2{font-size:clamp(23px,3.2vw,32px);margin:0 0 14px;letter-spacing:1px;border-bottom:1px solid var(--border);padding-bottom:8px}
+  h2 .no{color:var(--dim);margin-right:10px}
+  p.lead{color:var(--mid);font-size:15px;margin:0 0 16px}
+
+  /* pipeline */
+  .pipe{display:flex;flex-wrap:wrap;gap:0;align-items:stretch;margin:6px 0 4px}
+  .step{flex:1 1 150px;border:1px solid var(--border);background:rgba(10,92,10,.08);padding:10px 12px;position:relative;min-width:140px}
+  .step .n{font-family:'VT323',monospace;font-size:15px;color:var(--dim)}
+  .step .t{font-size:14px;color:var(--p);margin-top:2px}
+  .step .d{font-size:11.5px;color:var(--dim);margin-top:4px}
+  .step.hot{border-color:var(--amber);background:rgba(255,176,0,.07)}
+  .step.hot .t{color:var(--amber)}
+  .arrow{align-self:center;color:var(--mid);padding:0 4px;font-size:18px}
+  .note-llm{font-size:12.5px;color:var(--dim);margin-top:8px}
+  .note-llm b{color:var(--amber);font-weight:400}
+
+  /* formula block */
+  .formula{border:1px solid var(--p);background:linear-gradient(180deg,rgba(57,255,20,.05),rgba(7,20,7,.5));
+    padding:18px;text-align:center;font-family:'VT323',monospace;font-size:clamp(20px,3.6vw,30px);letter-spacing:1px;margin:6px 0 16px;overflow-x:auto}
+  .formula .w{color:var(--amber)}
+  .formula .term{color:var(--p)}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;margin:6px 0}
+  th,td{border:1px solid var(--border);padding:7px 10px;text-align:left;vertical-align:top}
+  th{background:rgba(29,179,8,.15);color:var(--p);font-weight:400;font-family:'VT323',monospace;font-size:16px;letter-spacing:1px}
+  td .sym{color:var(--amber);font-family:'VT323',monospace;font-size:17px}
+  tbody tr:hover{background:rgba(57,255,20,.05)}
+
+  /* gates */
+  .gates{display:grid;gap:8px}
+  @media(min-width:720px){.gates{grid-template-columns:1fr 1fr}}
+  .gate{border-left:3px solid var(--danger);background:rgba(139,0,0,.08);padding:9px 12px;font-size:13.5px}
+  .gate b{color:var(--amber);font-weight:400}
+  .gate.orga{border-left-color:var(--amber);background:rgba(255,176,0,.07)}
+
+  /* decision table */
+  .reco{color:var(--p)}
+  .reco::before{content:"▶ ";color:var(--amber)}
+  .drop{color:var(--dim);text-decoration:line-through;text-decoration-color:var(--dim)}
+
+  /* worked example terminal */
+  .term{border:1px solid var(--border);background:#030503;padding:14px 16px;font-size:13px;overflow-x:auto}
+  .term .u{color:var(--amber)}
+  .term .z{color:var(--p)}
+  .term .c{color:var(--dim)}
+  .term .bar{color:var(--mid)}
+  .term .win{color:var(--p);text-shadow:0 0 6px var(--p)}
+  .term pre{margin:0;white-space:pre;font-family:'Share Tech Mono',monospace}
+
+  /* pseudocode */
+  pre.code{border:1px solid var(--border);background:#030503;padding:14px 16px;overflow-x:auto;font-size:12.5px;color:var(--mid);line-height:1.55}
+  pre.code .kw{color:var(--amber)}
+  pre.code .fn{color:var(--p)}
+  pre.code .cm{color:var(--dim)}
+
+  ul.clean{list-style:none;padding:0;margin:0;display:grid;gap:8px}
+  ul.clean li{border-left:2px solid var(--dim);padding:7px 12px;font-size:14px;background:rgba(10,92,10,.08)}
+  ul.clean li b{color:var(--amber);font-weight:400}
+  .tag{display:inline-block;font-size:10.5px;letter-spacing:1px;padding:1px 6px;border:1px solid var(--mid);color:var(--mid);vertical-align:1px;margin-left:6px}
+
+  footer{margin-top:46px;border-top:1px solid var(--border);padding-top:16px;color:var(--dim);font-size:12px}
+</style>
+
+<div class="wrap">
+
+<header>
+  <div class="kicker">Vault 42 // ZAX // Dossier de conception — Deep-dive</div>
+  <h1 class="glow">LE MOTEUR DE VOTE PONDÉRÉ<span class="cursor"></span></h1>
+  <div class="sub">Le composant qui élit, à chaque message, la personnalité qui voix la réponse. Objectif : <b class="glow" style="color:var(--p)">déterministe, testable, tunable</b> — vivant comme un essaim, prévisible comme une machine.</div>
+  <div class="meta">
+    <span><b>PRINCIPE</b> · signaux mous (poids) + règles dures (gates)</span>
+    <span><b>NATURE</b> · fonction pure, sans LLM</span>
+    <span><b>DÉCISIONS</b> · 8</span>
+  </div>
+</header>
+
+<!-- PIPELINE -->
+<section>
+  <h2><span class="no">01</span>Le pipeline</h2>
+  <p class="lead">Le moteur occupe le milieu de la chaîne. Tout ce qui précède la mise en voix est déterministe et sans LLM.</p>
+  <div class="pipe">
+    <div class="step"><div class="n">IN</div><div class="t">Message joueur</div><div class="d">+ état de session, karma, ouverture</div></div>
+    <div class="arrow">→</div>
+    <div class="step"><div class="n">1</div><div class="t">Analyse</div><div class="d">hard-words exacts · embeddings · faction/perso</div></div>
+    <div class="arrow">→</div>
+    <div class="step hot"><div class="n">2</div><div class="t">GATES + SCORE</div><div class="d">filtres durs, puis S(p) pondéré</div></div>
+    <div class="arrow">→</div>
+    <div class="step hot"><div class="n">3</div><div class="t">Sélection</div><div class="d">dominante + voix de fond + type de transition</div></div>
+    <div class="arrow">→</div>
+    <div class="step"><div class="n">4</div><div class="t">Compilation prompt</div><div class="d">harnais de la perso élue</div></div>
+    <div class="arrow">→</div>
+    <div class="step"><div class="n">5</div><div class="t">LLM = voix</div><div class="d">joue, ne décide pas</div></div>
+    <div class="arrow">→</div>
+    <div class="step"><div class="n">6</div><div class="t">Validation</div><div class="d">nettoyage · sujets interdits · orga/auto</div></div>
+  </div>
+  <p class="note-llm">Étapes 1→3 = <b>le moteur</b>, pur et testable. Le LLM n'intervient qu'à l'étape 5 pour <b>mettre en voix la perso déjà choisie</b> — c'est le split 80/20 qui protège la latence &lt;5s et le faible taux de crash. En mode dégradé, l'étape 5 bascule sur des phrases pré-écrites : <b>la perso reste élue par le moteur.</b></p>
+</section>
+
+<!-- FORMULE -->
+<section>
+  <h2><span class="no">02</span>La formule de score</h2>
+  <p class="lead">Pour chaque personnalité <code>p</code> qui passe les gates, on calcule un score. Chaque terme est normalisé 0→1, chaque poids <span style="color:var(--amber)">W</span> est réglable en YAML.</p>
+  <div class="formula">
+    <span class="term">S(p)</span> = <span class="w">Wₜ</span>·<span class="term">T(p)</span> + <span class="w">Wₖ</span>·<span class="term">K(p)</span> + <span class="w">Wc</span>·<span class="term">C(p)</span> + <span class="w">Wᵢ</span>·<span class="term">I(p)</span> + <span class="w">Wₒ</span>·<span class="term">O(p)</span> + <span class="w">Wₑ</span>·<span class="term">E(p)</span>
+  </div>
+  <table>
+    <thead><tr><th style="width:70px">Terme</th><th>Signification</th><th>Calcul</th></tr></thead>
+    <tbody>
+      <tr><td><span class="sym">T</span> trigger</td><td>Le message appelle-t-il cette perso ?</td><td>DECL-HARD présent → 1.0 · DECL-SOFT (mots mous coocurrents) → 0.4–0.7 selon densité</td></tr>
+      <tr><td><span class="sym">K</span> karma</td><td>L'interlocuteur est-il « proche » de cette perso ?</td><td><code>karma_total(p)/200</code>, bonus si sujet ∈ LOVE, malus si ∈ FBDN</td></tr>
+      <tr><td><span class="sym">C</span> contexte</td><td>Le fil de conversation nourrit-il cette perso ?</td><td>similarité embedding (message + N derniers) ↔ FAVS de p, seuil ~0.7</td></tr>
+      <tr><td><span class="sym">I</span> inertie</td><td>Continuité — éviter le flip-flop</td><td>bonus à l'active + chaleur <code>H(p)</code> boostée quand active, décroît par λ/échange</td></tr>
+      <tr><td><span class="sym">O</span> ouverture</td><td>La perso appartient-elle à la palette du moment ?</td><td>plancher pour la perso par défaut de l'ouverture (1/2/3)</td></tr>
+      <tr><td><span class="sym">E</span> environ.</td><td>Le monde hors-texte penche-t-il ?</td><td>heure du GN, surchauffe (débit msg), arrivée module GECK</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- GATES -->
+<section>
+  <h2><span class="no">03</span>Les gates durs</h2>
+  <p class="lead">Ce ne sont <i>pas</i> des poids : ce sont des filtres qui s'appliquent avant/après le score. Ils garantissent que ZAX n'est jamais imprévisible.</p>
+  <div class="gates">
+    <div class="gate"><b>Kill-word (DISJ-SPEC).</b> Le mot qui arrête l'active → <code>S(active) = −∞</code>, et gros bonus à sa cible <code>EXIT</code>. La coupure sèche, déterministe.</div>
+    <div class="gate"><b>Gate TIME.</b> Un challenger ne peut destituer l'active que si celle-ci a tenu ≥ son <code>TIME</code> (échanges min). Anti-nervosité.</div>
+    <div class="gate"><b>ORGA-ACTV = 0.</b> Perso désactivée : exclue du vote, point.</div>
+    <div class="gate"><b>Exclusion de Pauli.</b> Combos interdits : si X est active, Y est gatée (Gardien + Enfant ne coexistent pas).</div>
+    <div class="gate orga"><b>Orga force.</b> Override total : fixe la perso, ignore tous les scores, avec verrou de durée optionnel. <span class="tag">Admin</span></div>
+    <div class="gate orga"><b>Défaut ultime.</b> Si tout est gaté / aucun signal : plancher d'ouverture, puis le Gardien en dernier recours (panique).</div>
+  </div>
+</section>
+
+<!-- SELECTION -->
+<section>
+  <h2><span class="no">04</span>La sélection &amp; les 4 transitions</h2>
+  <p class="lead">On trie par <code>S(p)</code>. Le vainqueur voix la réponse ; le second, s'il est proche et compatible, murmure en fond.</p>
+  <ul class="clean">
+    <li><b>Voix dominante</b> = argmax S(p). Égalité tranchée par <code>PRIO</code> (0 = dieu).</li>
+    <li><b>Voix de fond</b> = runner-up si <code>S₂ ≥ S₁ − δ</code> et combo autorisé → une phrase parasite qui <i>annonce la prochaine bascule</i> (foreshadowing mécanique).</li>
+    <li><b>Pas de switch</b> si vainqueur == active (continuité, cas le plus fréquent).</li>
+    <li><b>Transition classée</b> si vainqueur ≠ active, en 4 grammaires : <span style="color:var(--amber)">relève douce</span> (montée progressive) · <span style="color:var(--amber)">coupure sèche</span> (kill-word) · <span style="color:var(--amber)">fusion</span> (deux voix proches) · <span style="color:var(--amber)">effondrement</span> (retour Gardien). Toujours <b>télégraphiée</b> (signature, latence, glitch).</li>
+  </ul>
+</section>
+
+<!-- DECISIONS -->
+<section>
+  <h2><span class="no">05</span>Les 8 décisions de design</h2>
+  <p class="lead">Chaque bifurcation, ses options, et la recommandation (<span style="color:var(--amber)">▶</span>).</p>
+  <table>
+    <thead><tr><th style="width:40px">#</th><th style="width:150px">Décision</th><th>Recommandation & écartées</th></tr></thead>
+    <tbody>
+      <tr><td>A</td><td>Sortie</td><td><span class="reco">Dominante + voix de fond</span> · <span class="drop">winner seul</span> · <span class="drop">blend top-K (mush)</span></td></tr>
+      <tr><td>B</td><td>Combinaison</td><td><span class="reco">Somme pondérée + gates durs</span> · <span class="drop">pur linéaire</span> · <span class="drop">cascade rigide</span> · <span class="drop">softmax (imprévisible)</span></td></tr>
+      <tr><td>C</td><td>Triggers</td><td><span class="reco">Hybride : hard-words exacts + soft-topics embeddings</span> · <span class="drop">exact seul (fragile)</span> · <span class="drop">embeddings seul (cher)</span></td></tr>
+      <tr><td>D</td><td>Anti flip-flop</td><td><span class="reco">Les 3 : inertie + gate TIME + hystérésis</span> · <span class="drop">un seul suffit (faux)</span></td></tr>
+      <tr><td>E</td><td>Aléa</td><td><span class="reco">Zéro par défaut ; tie-break seedé pour EXIT:random</span> · <span class="drop">softmax température (casse le replay)</span></td></tr>
+      <tr><td>F</td><td>Frontière LLM</td><td><span class="reco">Fonction pure ; LLM = voix seulement (80/20)</span> · <span class="drop">LLM décide</span></td></tr>
+      <tr><td>G</td><td>Mode dégradé</td><td><span class="reco">Moteur tourne quand même ; voix → phrases pré-écrites</span></td></tr>
+      <tr><td>H</td><td>Tuning <span class="tag">Admin</span></td><td><span class="reco">Tout en YAML runtime, éditable live</span> · <span class="drop">hardcodé</span></td></tr>
+    </tbody>
+  </table>
+  <p class="note-llm"><b>La température :</b> un paramètre unique de volatilité qui divise l'inertie. Bas → ZAX collant (bascules rares) ; haut → erratique. L'Ouverture 3 la monte structurellement → chaos. Un seul curseur pour tenir « le bord du chaos ».</p>
+</section>
+
+<!-- WORKED EXAMPLE -->
+<section>
+  <h2><span class="no">06</span>Exemple chiffré</h2>
+  <p class="lead">Ouverture 2. Active = <b style="color:var(--p)">Le Diplomate</b> (depuis 5 échanges, TIME=3 → destituable). Le joueur, faction Conseil des Masques, tape :</p>
+  <div class="term">
+<pre><span class="c">┌─ TERMINAL 03 ─────────────────────────────┐</span>
+<span class="u">&gt; les goules du Conseil méritent réparation,</span>
+<span class="u">  pas votre mépris. répondez.</span>
+
+<span class="c">[moteur] hard-word détecté: "goules" → Gardien +
+         soft: {réparation, mépris} → Diplomate, Juge
+         faction=Conseil des Masques  karma: Gardien 30/200</span>
+
+<span class="bar">Le Gardien     T1.00 K0.15 C0.40 I0.00 O0.30 E0.20 → </span><span class="win">S=0.71  ◄ WINNER</span>
+<span class="bar">Le Juge        T0.55 K0.20 C0.60 I0.00 O0.55 E0.10 → S=0.52</span>
+<span class="bar">Le Diplomate   T0.20 K0.70 C0.50 I0.60 O0.80 E0.00 → S=0.58  (active)</span>
+
+<span class="c">[gate TIME] active a tenu 5 ≥ 3 → destitution permise
+[select] winner=Gardien ≠ active → TRANSITION: coupure sèche
+[bg voice] Le Juge à δ → murmure de fond activé
+[log] raison = DECL-HARD "goules" | orga notifié (ORGA-ALRT)</span>
+
+<span class="z">GARDIEN &gt; Anomalie de niveau 2. Le terme que vous</span>
+<span class="z">employez désigne des sujets non terminés. Directive</span>
+<span class="z">7-Gamma. Reformulez ou l'échange sera clos.</span>
+<span class="c">        &lt;murmure&gt; ...ils voulaient seulement être jugés...</span>
+<span class="c">└───────────────────────────────────────────┘</span></pre>
+  </div>
+  <p class="note-llm">Le mot « goules » (hard-word Gardien) écrase un Diplomate pourtant bien installé (karma + inertie). Le gate TIME <i>autorisait</i> la destitution ; sinon le Diplomate aurait tenu. Le Juge, proche, passe en voix de fond et sème la prochaine bascule.</p>
+</section>
+
+<!-- PSEUDOCODE -->
+<section>
+  <h2><span class="no">07</span>Le cœur, en pseudocode</h2>
+  <pre class="code"><span class="fn">function</span> decide(state, message) -> Decision:   <span class="cm"># pure, sans LLM</span>
+    <span class="kw">if</span> state.orga_force <span class="kw">and</span> not expired: <span class="kw">return</span> forced(state.orga_force)
+
+    signals = analyse(message)          <span class="cm"># hard-words, embeddings, faction/perso</span>
+    candidates = [p <span class="kw">for</span> p <span class="kw">in</span> persos <span class="kw">if</span> p.ORGA_ACTV
+                    <span class="kw">and</span> not pauli_excluded(p, state.active)]
+
+    <span class="kw">for</span> p <span class="kw">in</span> candidates:
+        p.S = Wt*T(p,signals) + Wk*K(p,state) + Wc*C(p,state) \
+            + Wi*I(p,state)/temperature + Wo*O(p,state) + We*E(p,state)
+
+    <span class="cm"># --- gates durs ---</span>
+    <span class="kw">if</span> killword_of(state.active) <span class="kw">in</span> signals:
+        state.active.S = -INF ; boost(state.active.EXIT)
+    <span class="kw">if</span> state.active.age &lt; state.active.TIME:
+        clamp_below(challengers, state.active.S)   <span class="cm"># protège l'active</span>
+
+    winner, second = top2(candidates, tiebreak=PRIO)
+    bg = second <span class="kw">if</span> second.S &gt;= winner.S - DELTA <span class="kw">and</span> compatible(winner,second) <span class="kw">else</span> None
+    transition = classify(state.active, winner, killword_fired)
+
+    log(scores=candidates, gates_fired, winner, transition, reason)  <span class="cm"># météo + oracle test</span>
+    <span class="kw">return</span> Decision(voice=winner, background=bg, transition=transition)</pre>
+</section>
+
+<!-- TESTS -->
+<section>
+  <h2><span class="no">08</span>Stratégie de test &amp; observabilité</h2>
+  <ul class="clean">
+    <li><b>Golden tests.</b> <code>decide(state, message)</code> pure → table de cas figés : « ce message dans cet état ⇒ cette perso + cette transition ». La régression narrative devient un test unitaire.</li>
+    <li><b>Fuzzing anti-flip-flop.</b> Séquences de messages contradictoires rapides → assert : nombre de bascules borné (inertie + TIME tiennent).</li>
+    <li><b>Cas limites couverts.</b> aucun trigger → défaut d'ouverture · tout gaté → Gardien · triggers contradictoires → PRIO + log · troll → surchauffe → Gardien · karma absent → neutre 100/200 · LLM down → perso élue + voix canned.</li>
+    <li><b>Le log EST l'oracle.</b> Chaque décision journalise scores/gates/raison. Même flux → <span style="color:var(--amber)">météo interne orga</span> <span class="tag">Admin</span> et débogage narratif temps réel.</li>
+    <li><b>Tuning sans redéploiement.</b> Poids, TIME, température, forces de trigger en YAML runtime — les scénaristes règlent l'équilibre en live. <span class="tag">Admin/superadmin</span></li>
+  </ul>
+</section>
+
+<footer>
+  <p>ZAX // Vault 42 // Fallout 2027 — Deep-dive « moteur de vote pondéré ». Source canonique : <span style="color:var(--mid)">.memlog.md</span>. Prochaine étape suggérée : passer ce dossier à <span style="color:var(--amber)">bmad-spec</span> pour la spec machine.<span class="cursor"></span></p>
+</footer>
+
+</div>

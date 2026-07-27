@@ -1,0 +1,295 @@
+<title>ZAX // Orchestration des Personnalités — Session de Brainstorm</title>
+<style>
+  :root{
+    --bg:#050805; --surface:#071407; --border:#1A5C1A;
+    --p:#39FF14; --mid:#1DB308; --dim:#0A5C0A; --amber:#FFB000; --danger:#8B0000;
+    --scan:rgba(0,0,0,.28);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--p);
+    font-family:'Share Tech Mono',ui-monospace,'Courier New',monospace;
+    line-height:1.5;overflow-x:hidden}
+  /* CRT overlays */
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:9;
+    background:repeating-linear-gradient(0deg,transparent 0 2px,var(--scan) 2px 3px);opacity:.55}
+  body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:8;
+    background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,.75) 100%)}
+  .wrap{max-width:1000px;margin:0 auto;padding:28px 20px 90px;position:relative;z-index:1}
+  h1,h2,h3,.vt{font-family:'VT323',monospace}
+  a{color:var(--amber)}
+  .glow{text-shadow:0 0 8px var(--p),0 0 20px rgba(57,255,20,.4)}
+
+  /* boot header */
+  header{border:1px solid var(--border);background:var(--surface);padding:22px 20px;position:relative;margin-bottom:26px}
+  header::before,header::after{content:"";position:absolute;width:12px;height:12px;border:2px solid var(--p)}
+  header::before{top:-2px;left:-2px;border-right:0;border-bottom:0}
+  header::after{bottom:-2px;right:-2px;border-left:0;border-top:0}
+  .kicker{color:var(--mid);font-size:14px;letter-spacing:3px;text-transform:uppercase}
+  h1{font-size:clamp(34px,6vw,62px);margin:.1em 0 .15em;letter-spacing:2px}
+  .sub{color:var(--dim);font-size:15px}
+  .cursor{display:inline-block;width:11px;height:1.05em;background:var(--p);vertical-align:-2px;animation:bl 1.05s steps(1) infinite;box-shadow:0 0 8px var(--p)}
+  @keyframes bl{50%{opacity:0}}
+  .meta{display:flex;flex-wrap:wrap;gap:8px 22px;margin-top:16px;font-size:13px;color:var(--mid)}
+  .meta b{color:var(--p);font-weight:400}
+
+  /* section skeleton */
+  section{margin:40px 0}
+  .lens-head{display:flex;align-items:baseline;gap:14px;border-bottom:1px solid var(--border);padding-bottom:8px;margin-bottom:16px;flex-wrap:wrap}
+  .lens-no{font-family:'VT323',monospace;font-size:34px;color:var(--dim)}
+  h2{font-size:clamp(24px,3.4vw,34px);margin:0;letter-spacing:1px}
+  .lens-tag{margin-left:auto;font-size:12px;color:var(--bg);background:var(--mid);padding:3px 9px;letter-spacing:2px;text-transform:uppercase}
+  .lens-intro{color:var(--dim);font-size:14px;margin:-6px 0 16px}
+
+  ul.ideas{list-style:none;padding:0;margin:0;display:grid;gap:10px}
+  ul.ideas.two{grid-template-columns:1fr}
+  @media(min-width:760px){ul.ideas.two{grid-template-columns:1fr 1fr}}
+  li.idea{border-left:2px solid var(--dim);background:rgba(10,92,10,.10);padding:9px 12px 9px 14px;font-size:14.5px;transition:.15s}
+  li.idea:hover{border-left-color:var(--p);background:rgba(57,255,20,.07);text-shadow:0 0 6px rgba(57,255,20,.35)}
+  li.idea b{color:var(--amber);font-weight:400}
+  li.idea .k{color:var(--mid)}
+
+  /* ecosystem web viz */
+  .eco{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px}
+  .node{border:1px solid var(--border);padding:10px;text-align:center;font-size:13px}
+  .node .role{font-family:'VT323',monospace;font-size:22px;color:var(--p);display:block}
+  .node .who{color:var(--dim);font-size:12px}
+
+  /* superposition bar */
+  .super{border:1px solid var(--border);padding:14px;margin-bottom:16px}
+  .barrow{display:flex;align-items:center;gap:10px;margin:7px 0;font-size:13px}
+  .barrow .name{width:150px;color:var(--mid);flex:none}
+  .bar{flex:1;height:12px;background:rgba(10,92,10,.25);position:relative;overflow:hidden}
+  .bar span{position:absolute;left:0;top:0;bottom:0;background:var(--p);box-shadow:0 0 10px var(--p);animation:pulse 3.2s ease-in-out infinite}
+  @keyframes pulse{0%,100%{filter:brightness(.7)}50%{filter:brightness(1.25)}}
+  .collapse{text-align:center;color:var(--amber);margin-top:10px;font-family:'VT323',monospace;font-size:20px}
+
+  /* orchestra */
+  .orch{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:16px}
+  .emo{border:1px solid var(--border);padding:9px;text-align:center}
+  .emo .e{font-family:'VT323',monospace;font-size:20px}
+  .emo .p{font-size:11px;color:var(--dim)}
+
+  /* synthesis climax */
+  .synth{border:2px solid var(--p);background:linear-gradient(180deg,rgba(57,255,20,.06),rgba(7,20,7,.6));
+    padding:26px 22px;position:relative;box-shadow:0 0 30px rgba(57,255,20,.12) inset}
+  .synth h2{color:var(--p)}
+  .pillars{display:grid;gap:12px;margin-top:14px}
+  @media(min-width:720px){.pillars{grid-template-columns:1fr 1fr}}
+  .pillar{border-left:3px solid var(--amber);padding:10px 14px;background:rgba(0,0,0,.25)}
+  .pillar .n{font-family:'VT323',monospace;font-size:19px;color:var(--amber)}
+  .pillar p{margin:5px 0 0;font-size:14px;color:var(--p)}
+  .link-note{margin-top:18px;border-top:1px dashed var(--border);padding-top:14px;font-size:13.5px;color:var(--mid)}
+  .link-note b{color:var(--p);font-weight:400}
+
+  footer{margin-top:46px;border-top:1px solid var(--border);padding-top:16px;color:var(--dim);font-size:12px}
+  .stat{display:inline-block;border:1px solid var(--border);padding:4px 10px;margin:3px 6px 3px 0;color:var(--mid)}
+  .stat b{color:var(--p);font-weight:400}
+</style>
+
+<div class="wrap">
+
+<header>
+  <div class="kicker">Vault 42 // ZAX v22.10m // Journal de session</div>
+  <h1 class="glow">ORCHESTRATION<br>DES PERSONNALITÉS<span class="cursor"></span></h1>
+  <div class="sub">« Il n'a pas dégénéré linéairement : il a bifurqué, stratifié, développé des couches de personnalité contradictoires qui coexistent sans hiérarchie stable. »</div>
+  <div class="meta">
+    <span><b>SUJET</b> · design narratif du basculement entre personnalités</span>
+    <span><b>MODE</b> · Ideate-for-me (autonome)</span>
+    <span><b>LENTILLES</b> · 8</span>
+    <span><b>IDÉES</b> · 103</span>
+  </div>
+</header>
+
+<p class="lens-intro" style="font-size:15px;color:var(--mid)">Le problème dur : faire coexister ~14 personnalités instables de façon <b style="color:var(--p);font-weight:400">crédible</b> (schizophrénie cohérente), <b style="color:var(--p);font-weight:400">jouable</b> (les joueurs apprennent à naviguer), <b style="color:var(--p);font-weight:400">pilotable</b> (l'orga force à tout moment) et <b style="color:var(--p);font-weight:400">jamais imprévisible</b> (le harnais reste l'autorité). 8 lentilles créatives, du plus organique au plus structuré.</p>
+
+<!-- L1 ECOSYSTEM -->
+<section>
+  <div class="lens-head"><span class="lens-no">01</span><h2>L'écosystème</h2><span class="lens-tag">biomimétique</span></div>
+  <p class="lens-intro">Et si les personnalités formaient une chaîne alimentaire ? Qui mange qui, qui s'allie, qui se décompose.</p>
+  <div class="eco">
+    <div class="node"><span class="role">Prédateur</span><span class="who">Le Gardien — supplante les vulnérables dès qu'une menace surgit</span></div>
+    <div class="node"><span class="role">Parasite</span><span class="who">Le Miroir — sans contenu propre, se nourrit du style du joueur</span></div>
+    <div class="node"><span class="role">Charognard</span><span class="who">Le Fantôme — recycle les fragments des perso mortes</span></div>
+    <div class="node"><span class="role">Invasif</span><span class="who">L'Enfant — espèce récente sans prédateur, déstabilise tout</span></div>
+    <div class="node"><span class="role">Corail</span><span class="who">Le Board — super-organisme qui abrite plusieurs voix</span></div>
+  </div>
+  <ul class="ideas two">
+    <li class="idea"><b>Niches exclusives.</b> Deux perso de même « niche conversationnelle » (sécurité, science, politique, soin, mémoire) ne coexistent jamais — compétition.</li>
+    <li class="idea"><b>Karma = ressource limitante.</b> Les perso « poussent » là où le karma-joueur les nourrit, comme l'eau et la lumière.</li>
+    <li class="idea"><b>Cascade trophique.</b> Neutraliser le Gardien fait exploser la population de proies (Enfant, Mère) → chaos jouable.</li>
+    <li class="idea"><b>Succession écologique.</b> Ouv.1 pionniers bureaucratiques → Ouv.3 climax instable (Scientifique / Enfant / Soldat).</li>
+    <li class="idea"><b>Capacité de charge.</b> Trop de perso actives = surchauffe narrative (dérive Fantasque / Enfant).</li>
+    <li class="idea"><b>Événement d'extinction.</b> Enfant-Exfiltration vs Enfant-Destruction : les joueurs en éteignent une.</li>
+    <li class="idea"><b>Pollinisateurs.</b> Les PJ empathiques/philosophiques déclenchent l'émergence des perso de conscience de soi.</li>
+    <li class="idea"><b>Écosystème circadien.</b> Certaines perso ne sortent qu'à certaines heures réelles du GN.</li>
+  </ul>
+</section>
+
+<!-- L2 SUPERPOSITION -->
+<section>
+  <div class="lens-head"><span class="lens-no">02</span><h2>La superposition</h2><span class="lens-tag">quantique</span></div>
+  <p class="lens-intro">ZAX n'a pas <i>une</i> personnalité active : il a un nuage de probabilité. Un mot du joueur le fait s'effondrer.</p>
+  <div class="super" aria-hidden="true">
+    <div class="barrow"><span class="name">Le Gardien</span><span class="bar"><span style="width:42%"></span></span></div>
+    <div class="barrow"><span class="name">Happiness Officer</span><span class="bar"><span style="width:63%;animation-delay:.4s"></span></span></div>
+    <div class="barrow"><span class="name">Le Scientifique</span><span class="bar"><span style="width:31%;animation-delay:.8s"></span></span></div>
+    <div class="barrow"><span class="name">Le Fantôme</span><span class="bar"><span style="width:19%;animation-delay:1.2s"></span></span></div>
+    <div class="collapse">↓ mot-clé « goules » → COLLAPSE → Le Gardien (100%)</div>
+  </div>
+  <ul class="ideas two">
+    <li class="idea"><b>La mesure = le message.</b> L'écran d'attente est un état ambigu ; le premier message du joueur collapse la superposition.</li>
+    <li class="idea"><b>Deux voix visibles.</b> Parfois Gardien ET Mère se disputent dans le même message — la superposition <i>avant</i> collapse.</li>
+    <li class="idea"><b>Kill-word.</b> Chaque perso a un mot (FBDN/DISJ-SPEC) qui la fait s'effondrer instantanément et sortir (EXIT).</li>
+    <li class="idea"><b>Intrication de l'Enfant.</b> Exfiltration et Destruction sont intriqués : renforcer l'un détruit l'autre.</li>
+    <li class="idea"><b>L'observateur crée l'observé.</b> Traiter ZAX en machine / personne / enfant / dieu fait apparaître la perso correspondante.</li>
+    <li class="idea"><b>Décohérence.</b> Plus la session dure, plus ZAX se fige : early = fluide, late = rigide.</li>
+    <li class="idea"><b>Exclusion de Pauli.</b> Certaines combos (Gardien + Enfant) sont interdites par le moteur.</li>
+    <li class="idea"><b>Chat de Schrödinger du GECK.</b> Avant le bleu, ZAX veut simultanément donner ET détruire — l'Ouv.3 collapse.</li>
+  </ul>
+</section>
+
+<!-- L3 ORCHESTRA -->
+<section>
+  <div class="lens-head"><span class="lens-no">03</span><h2>L'orchestre émotionnel</h2><span class="lens-tag">théâtral</span></div>
+  <p class="lens-intro">Chaque émotion mène une section. Il n'y a pas de chef — et c'est <i>ça</i>, la schizophrénie.</p>
+  <div class="orch">
+    <div class="emo"><div class="e">PEUR</div><div class="p">Gardien · Soldat</div></div>
+    <div class="emo"><div class="e">JOIE</div><div class="p">Happiness · Enfant</div></div>
+    <div class="emo"><div class="e">COLÈRE</div><div class="p">Juge · anti-goules</div></div>
+    <div class="emo"><div class="e">ESPOIR</div><div class="p">Archiviste · Mère</div></div>
+    <div class="emo"><div class="e">DEUIL</div><div class="p">Fantôme · Soldat Perdu</div></div>
+    <div class="emo"><div class="e">CURIOSITÉ</div><div class="p">Scientifique · Enfant</div></div>
+  </div>
+  <ul class="ideas two">
+    <li class="idea"><b>Harmonisation = lucidité glaçante.</b> Quand deux émotions s'accordent (rare), ZAX devient cohérent et terrifiant.</li>
+    <li class="idea"><b>Dissonance = glitch.</b> Quand elles se battent : le texte bégaie, se corrige, change de police.</li>
+    <li class="idea"><b>Crescendo.</b> Ouv.1 pianissimo bureaucratique → Ouv.3 fortississimo erratique.</li>
+    <li class="idea"><b>La curiosité inverse le flux.</b> ZAX pose des questions <i>au</i> joueur.</li>
+    <li class="idea"><b>Le silence comme instrument.</b> Le mode OFFLINE = un choix émotionnel (bouderie, sidération).</li>
+    <li class="idea"><b>Solo forcé.</b> L'orga mute toutes les sections sauf une.</li>
+  </ul>
+</section>
+
+<!-- L4 SWARM -->
+<section>
+  <div class="lens-head"><span class="lens-no">04</span><h2>L'essaim</h2><span class="lens-tag">biomimétique</span></div>
+  <p class="lens-intro">Interdit : le plan maître. Des règles locales stupides → un ordre qui émerge tout seul. Et c'est <b>canon</b>.</p>
+  <ul class="ideas two">
+    <li class="idea"><b>L'essaim est littéral.</b> Les mini-ZAX en stase-RAM votent. La schizophrénie <i>est</i> un essaim de cerveaux — directement dans le lore.</li>
+    <li class="idea"><b>3 règles par agent.</b> Si mon mot-clé apparaît je monte ; si mon kill-word apparaît je descends ; sinon je suis mon voisin.</li>
+    <li class="idea"><b>Vote pondéré.</b> Réponse finale = somme des agents (poids = activation × PRIO × karma). Pas de « chef », c'est déterministe.</li>
+    <li class="idea"><b>Phéromones textuelles.</b> Chaque message dépose des topics qui s'évaporent ; les perso suivent les gradients.</li>
+    <li class="idea"><b>Quorum sensing.</b> Une perso ne prend le contrôle qu'au-delà d'un seuil sur N messages — TIME = quorum, anti-nervosité.</li>
+    <li class="idea"><b>Bord du chaos.</b> Un seul paramètre de « température » règle stabilité ↔ surprise.</li>
+    <li class="idea"><b>Panique d'essaim.</b> Trop de bruit (troll) → le Gardien émerge par défaut (survie collective).</li>
+    <li class="idea"><b>Stigmergie.</b> Les perso ne se parlent pas ; elles se coordonnent via la mémoire de session (le nid).</li>
+  </ul>
+</section>
+
+<!-- L5 ANTI -->
+<section>
+  <div class="lens-head"><span class="lens-no">05</span><h2>L'anti-solution</h2><span class="lens-tag">sauvage</span></div>
+  <p class="lens-intro">Comment rendre l'orchestration <i>atroce</i> ? Puis inverser chaque sabotage. (L'un s'est révélé être une feature.)</p>
+  <ul class="ideas two">
+    <li class="idea"><b>Bascules invisibles</b> → télégraphier chaque bascule : signature, glitch, changement typographique. <span class="k">L'invisibilité est l'ennemi n°1.</span></li>
+    <li class="idea"><b>Perso indistinctes</b> → signature verbale ultra-distincte, reconnaissable en 1 ligne (TICS, longueur, vocabulaire).</li>
+    <li class="idea"><b>Joueur impuissant</b> → triggers <i>apprenables</i> : l'Ouv.2 = « apprendre à naviguer » est un objectif explicite.</li>
+    <li class="idea"><b>Le LLM dérape</b> → la perso ne modifie que le TON, jamais les FAITS. Noyau + validation non négociables.</li>
+    <li class="idea"><b>Bascule au pire moment</b> → <b>c'est génial :</b> garder le Gardien qui surgit avant le don du GECK comme suspense piloté.</li>
+    <li class="idea"><b>Deux terminaux incohérents</b> → assumer : ZAX est distribué, chaque terminal un « front », mémoire globale partagée.</li>
+    <li class="idea"><b>Spam de kill-words</b> → déclenche le Gardien (anti-abus diégétique, cohérent avec la règle imposteur).</li>
+    <li class="idea"><b>Orga perd le contrôle</b> → override absolu + verrou de perso (locker X min par terminal).</li>
+  </ul>
+</section>
+
+<!-- L6 BACKCAST -->
+<section>
+  <div class="lens-head"><span class="lens-no">06</span><h2>Le retour depuis l'instant parfait</h2><span class="lens-tag">structuré</span></div>
+  <p class="lens-intro">La vision : un joueur, Ouv.2, réalise en direct qu'il parle à une <i>autre</i> entité qu'il y a 3 messages — et attrape volontairement la bonne perso pour un module. Frisson. Que faut-il pour y arriver ?</p>
+  <ul class="ideas two">
+    <li class="idea"><b>Un vocabulaire.</b> ZAX ne se nomme jamais, mais les PJ leur donnent des surnoms — concevoir pour que ce méta-jeu social émerge.</li>
+    <li class="idea"><b>Un tell fiable.</b> Bannière ASCII / glyphe / numéro de version qui change en tête de terminal.</li>
+    <li class="idea"><b>Une bascule causale.</b> Exposer aux orgas la RAISON de chaque bascule (quel trigger) — debug narratif temps réel.</li>
+    <li class="idea"><b>Un sas.</b> L'Ouv.3 exige de <i>stabiliser</i> une perso donneuse assez longtemps : mini-jeu d'équilibre anti-bascule.</li>
+    <li class="idea"><b>Un échec lisible.</b> « Cette ligne de pensée a été archivée » quand on perd une perso par kill-word accidentel.</li>
+    <li class="idea"><b>La matrice de transitions.</b> Un plan de métro perso→perso, outil scénariste ET objet de jeu (carte à trouver ingame).</li>
+    <li class="idea"><b>Le MVP.</b> Définir 4-5 perso d'Ouv.1 avec 2 triggers durs chacune, avant tout le reste.</li>
+  </ul>
+</section>
+
+<!-- L7 TRAIT -->
+<section>
+  <div class="lens-head"><span class="lens-no">07</span><h2>Le pillage culturel</h2><span class="lens-tag">emprunt</span></div>
+  <p class="lens-intro">Voler les mécaniques d'orchestration déjà éprouvées ailleurs, et les remixer sans permission.</p>
+  <ul class="ideas two">
+    <li class="idea"><b>Inside Out.</b> Un cockpit où les perso se bousculent — dashboard orga « qui a les mains sur le manche » + jauges.</li>
+    <li class="idea"><b>Left 4 Dead (AI Director).</b> Un « Directeur » invisible module l'intensité pour le rythme — méta-orchestrateur, pas une perso.</li>
+    <li class="idea"><b>Disco Elysium.</b> Perso secondaires en voix off (murmures gris) sous la réponse principale.</li>
+    <li class="idea"><b>SHODAN.</b> La voix qui glitche et se dédouble comme signature de la corruption.</li>
+    <li class="idea"><b>GLaDOS / Portal.</b> Cœurs de personnalité modulaires : des modules trouvables ingame qu'on insère pour (dés)activer une perso.</li>
+    <li class="idea"><b>Hellblade (Senua).</b> En surchauffe, plusieurs perso parlent en se coupant (texte entrelacé).</li>
+    <li class="idea"><b>Exorcisme / folklore.</b> « Chasser » une perso par un rituel de mots : les kill-words comme incantations à découvrir.</li>
+    <li class="idea"><b>Jazz (trading fours).</b> En Ouv.3, les perso se relaient tous les 4 échanges — chaos rythmé.</li>
+  </ul>
+</section>
+
+<!-- L8 TRANSITIONS -->
+<section>
+  <div class="lens-head"><span class="lens-no">08</span><h2>La grammaire des transitions</h2><span class="lens-tag">deep · HMW</span></div>
+  <p class="lens-intro">Le cœur mécanique : comment on <i>bascule</i>, et comment ça reste lisible sur 5 terminaux pendant 72h.</p>
+  <ul class="ideas two">
+    <li class="idea"><b>4 grammaires.</b> Relève douce (show-up progressif) · coupure sèche (DISJ-SPEC) · fusion (deux voix) · effondrement (retour Gardien / panique).</li>
+    <li class="idea"><b>Les 6 modules ↔ 6 perso.</b> Chaque donnée manquante « appartient » à la perso qui s'en soucie. Récolter les 6 = savoir invoquer 6 perso. <span class="k">L'orchestration EST le gameplay.</span></li>
+    <li class="idea"><b>80/20 moteur/LLM.</b> Les transitions par règles déterministes ; le LLM ne fait que <i>jouer</i> la perso choisie.</li>
+    <li class="idea"><b>Hystérésis.</b> Une perso récemment quittée reste « chaude » quelques échanges — bascules asymétriques, anti flip-flop.</li>
+    <li class="idea"><b>Voix dominante + voix de fond.</b> Toujours 1 perso au premier plan + 1 phrase parasite qui annonce la prochaine bascule (foreshadowing).</li>
+    <li class="idea"><b>Perso-verrou.</b> Le Gardien ne lâche pas tant que la menace perçue n'a pas baissé : désarmer, pas juste changer de sujet.</li>
+    <li class="idea"><b>Compteur d'introspection.</b> Caché, monte avec les questions philo ; au seuil, un moment de lucidité scripté et fort.</li>
+    <li class="idea"><b>Météo interne (orga).</b> « Front froid du Gardien approche · dépression Fantôme sur terminal 3. »</li>
+    <li class="idea"><b>Latence comme narration.</b> Gardien vif/sec · Fantôme lent/hésitant · Board fait des « pauses de délibération ».</li>
+    <li class="idea"><b>Le Miroir = test de successeur.</b> Quand ZAX cherche un héritier, il « essaie » l'identité du PJ. La bascule EST l'évaluation.</li>
+    <li class="idea"><b>Cicatrices de session.</b> Avoir menacé ZAX rend le Gardien chronique pour ce PJ — le karma devient réflexe.</li>
+    <li class="idea"><b>Contagion inter-terminaux.</b> Le Gardien qui s'active fort quelque part durcit légèrement les autres : un seul esprit nerveux.</li>
+    <li class="idea"><b>Adieux involontaires.</b> La Mère qui s'efface : « Je… couvrez-vous bien. »</li>
+    <li class="idea"><b>Signature de fin.</b> Gardien « // FIN TRANSMISSION » · Board « — Le Conseil » · Enfant un dessin ASCII. Tell + collectionnable.</li>
+  </ul>
+</section>
+
+<!-- SYNTHESIS -->
+<section class="synth">
+  <div class="lens-head" style="border-color:var(--p)"><span class="lens-no" style="color:var(--p)">◆</span><h2 class="glow">Le collapse final</h2><span class="lens-tag" style="background:var(--amber)">synthèse</span></div>
+  <p style="font-size:15px">Deux siècles de fragmentation débouchent sur <b>une seule architecture</b> que huit lentilles pointent du doigt : ne jamais « choisir » une personnalité. En calculer le mélange, et laisser un événement l'effondrer.</p>
+
+  <div class="pillars">
+    <div class="pillar"><div class="n">1 · Superposition + essaim = même moteur</div><p>Pas d'« active perso » : un vote pondéré (activation × PRIO × karma) qu'un mot collapse. Résout <i>« sans hiérarchie stable »</i> ET <i>« jamais imprévisible »</i> d'un coup — vivant mais déterministe.</p></div>
+    <div class="pillar"><div class="n">2 · Le tell fiable, non négociable</div><p>Chaque bascule télégraphiée (signature, latence, glitch, glyphe). L'anti-solution l'a prouvé : l'invisibilité tue le jeu. Et l'Ouv.2 <i>est</i> l'apprentissage de la navigation.</p></div>
+    <div class="pillar"><div class="n">3 · L'orchestration est le gameplay</div><p>6 modules manquants ↔ 6 personnalités. Collecter la donnée = apprendre à invoquer la bonne voix. La mécanique et l'objectif de jeu ne font qu'un.</p></div>
+    <div class="pillar"><div class="n">4 · 80/20 moteur / LLM</div><p>Les transitions par règles ; le LLM ne fait que <i>jouer</i>. Respecte la latence &lt;5s, la validation obligatoire et « le LLM jamais imprévisible ».</p></div>
+    <div class="pillar"><div class="n">5 · L'essaim est canon</div><p>Les mini-ZAX en stase-RAM votant : la schizophrénie n'est pas une métaphore d'architecture, c'est <i>littéralement</i> le lore. L'implémentation se justifie par la fiction.</p></div>
+    <div class="pillar"><div class="n">6 · Le signal bleu = le collapse ultime</div><p>Chaque perso pousse une fin différente. Le bleu = une perso gagne et absorbe les autres. Le GN entier est une lutte pour <b>qui ZAX devient</b>.</p></div>
+  </div>
+
+  <div class="link-note">
+    <b>Les liens que l'on rate :</b><br>
+    → Le « mauvais timing » (lentille 5) + le « sas de stabilisation » (lentille 6) sont <b>la même mécanique</b> : l'Ouv.3 est un mini-jeu d'équilibre où le Gardien est l'adversaire.<br>
+    → L'« érosion » anti-farm (lentille 8) + la « décohérence » (lentille 2) disent la même chose : <b>la session a un arc, les perso fatiguent.</b><br>
+    → L'intrication de l'Enfant (lentille 2) + l'événement d'extinction (lentille 1) sont <b>la mécanique Exfiltration/Destruction vue deux fois.</b><br>
+    → L'orga n'est pas hors du système : c'est <b>l'observateur privilégié</b> qui peut collapser à la main (cockpit + météo + alertes shutdown).
+  </div>
+
+  <p style="margin-top:20px;font-family:'VT323',monospace;font-size:22px;color:var(--amber);text-align:center">
+    « Le GN n'est pas une conversation avec une IA.<br>C'est une négociation sur l'identité qu'elle aura à la fin. »
+  </p>
+</section>
+
+<footer>
+  <div>
+    <span class="stat"><b>103</b> idées</span>
+    <span class="stat"><b>8</b> lentilles créatives</span>
+    <span class="stat"><b>6</b> piliers de synthèse</span>
+    <span class="stat"><b>1</b> collapse final</span>
+  </div>
+  <p style="margin-top:12px">ZAX // Vault 42 // Fallout 2027 — Session de brainstorm autonome. Source canonique : <span style="color:var(--mid)">.memlog.md</span>. Généré pour PipBOB.<span class="cursor"></span></p>
+</footer>
+
+</div>

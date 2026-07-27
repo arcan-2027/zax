@@ -1,0 +1,46 @@
+# ============================================================================
+# EXEMPLE — bloc d'override local dans un module de personnalité
+# ----------------------------------------------------------------------------
+# À AJOUTER à la fin d'un fichier config/personnalites/<perso>.yaml existant
+# (celui qui contient déjà UPID, NAME, DECL-HARD, PRIO, TIME, karma:, etc.).
+#
+# Le moteur applique : poids_effectif = poids_global × multiplicateur_local.
+# Un multiplicateur absent = 1.0 (on hérite du global). 0.0 = on neutralise.
+# C'est ainsi qu'une perso peut avoir SA propre façon de basculer, sans
+# toucher au fichier global zax_weights.yaml.
+# ============================================================================
+
+
+# --- Cas 1 : L'ARCHIVISTE — ignore totalement le karma -----------------------
+# Doc source : « Toutes les perso ne partagent pas le même système de karma.
+#               L'Archiviste n'en tient même pas compte. »
+# Il ne veut pas qu'on l'aime, il veut qu'on lui PROUVE. Le karma ne le bouge pas.
+NAME: l_archiviste
+poids_locaux:
+  karma: 0.0          # K(p) neutralisé -> le karma n'influence jamais son élection
+  contexte: 1.30      # il "sur-écoute" les sujets de société (ses FAVS)
+  trigger: 1.00
+# (le reste hérité du global)
+
+
+# --- Cas 2 : LE GARDIEN — collant et prioritaire une fois déclenché -----------
+# Il ne lâche pas tant que la menace perçue n'a pas baissé (perso-verrou).
+NAME: le_gardien
+poids_locaux:
+  inertie: 1.60       # une fois en contrôle, très dur à déloger
+  environnement: 1.40 # réagit fort à la surchauffe / menace
+# Rappels des champs du module standard qui pèsent aussi dans le vote :
+#   PRIO: 0           # gagne toutes les égalités (0 = dieu)
+#   TIME: 2           # peut destituer vite (réflexe sécuritaire)
+#   DISJ-SPEC: [...]  # ses propres kill-words
+
+
+# --- Cas 3 : L'ENFANT — nerveux, volatile, sensible au "jeu" ------------------
+# Corruption de données récente : bascule facilement, mémoire courte.
+NAME: l_enfant
+poids_locaux:
+  inertie: 0.40       # ne "tient" pas le contrôle longtemps
+  trigger: 1.20       # ultra-réactif à ses déclencheurs (mots autour du "jeu")
+override_dynamique:
+  temperature_locale: 1.6   # (optionnel) rend CETTE perso plus volatile que la moyenne
+  time: 1                   # peut être destituée dès l'échange suivant

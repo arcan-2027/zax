@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ZAX — Terminal RobCo</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green:      #41ff6b;
+      --green-dim:  #1f8035;
+      --green-glow: rgba(65, 255, 107, 0.18);
+      --green-faint:#0d2e14;
+      --bg:         #060c08;
+      --scanline:   rgba(0,0,0,0.18);
+    }
+
+    html, body {
+      width: 100%; height: 100%;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    /* ── ÉCRAN CRT ── */
+    .screen {
+      position: relative;
+      width: min(680px, 100vw);
+      height: min(860px, 100vh);
+      background: var(--bg);
+      color: var(--green);
+      font-family: 'Share Tech Mono', 'Courier New', monospace;
+      font-size: 14px;
+      line-height: 1.55;
+      overflow: hidden;
+      border-radius: 6px;
+      box-shadow:
+        0 0 0 2px #0a1a0c,
+        0 0 0 4px #071009,
+        0 0 60px rgba(65,255,107,0.12),
+        0 0 120px rgba(65,255,107,0.05);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Scanlines */
+    .screen::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        to bottom,
+        transparent 0px,
+        transparent 3px,
+        var(--scanline) 3px,
+        var(--scanline) 4px
+      );
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    /* Vignette */
+    .screen::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.65) 100%);
+      pointer-events: none;
+      z-index: 11;
+    }
+
+    /* Légère distorsion barrel */
+    .screen { perspective: 800px; }
+
+    /* ── HEADER ── */
+    .header {
+      padding: 18px 24px 10px;
+      border-bottom: 1px solid var(--green-dim);
+      flex-shrink: 0;
+    }
+
+    .robco-logo {
+      font-size: 10px;
+      letter-spacing: .25em;
+      color: var(--green-dim);
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .zax-title {
+      font-size: 26px;
+      letter-spacing: .15em;
+      text-shadow: 0 0 12px var(--green), 0 0 30px rgba(65,255,107,0.4);
+    }
+
+    .zax-sub {
+      font-size: 11px;
+      color: var(--green-dim);
+      letter-spacing: .12em;
+      margin-top: 2px;
+    }
+
+    .header-status {
+      display: flex;
+      gap: 24px;
+      margin-top: 12px;
+      font-size: 11px;
+      color: var(--green-dim);
+    }
+
+    .header-status span { letter-spacing: .06em; }
+    .header-status .ok  { color: var(--green); }
+
+    /* ── DIVIDER ── */
+    .divider {
+      font-size: 11px;
+      color: var(--green-dim);
+      padding: 4px 24px;
+      letter-spacing: .1em;
+      flex-shrink: 0;
+    }
+
+    /* ── CHAT LOG ── */
+    .chat-log {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--green-dim) transparent;
+    }
+
+    .chat-log::-webkit-scrollbar { width: 3px; }
+    .chat-log::-webkit-scrollbar-thumb { background: var(--green-dim); }
+
+    /* Messages ZAX */
+    .msg-zax {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .msg-zax .who {
+      font-size: 10px;
+      letter-spacing: .15em;
+      color: var(--green-dim);
+      text-transform: uppercase;
+    }
+
+    .msg-zax .bubble {
+      color: var(--green);
+      text-shadow: 0 0 6px rgba(65,255,107,0.3);
+      white-space: pre-wrap;
+    }
+
+    /* Messages joueur */
+    .msg-player {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      align-items: flex-end;
+    }
+
+    .msg-player .who {
+      font-size: 10px;
+      letter-spacing: .15em;
+      color: var(--green-dim);
+      text-transform: uppercase;
+    }
+
+    .msg-player .bubble {
+      color: var(--green-dim);
+      border-left: 2px solid var(--green-dim);
+      padding-left: 10px;
+    }
+
+    /* Typing indicator */
+    .typing {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+      color: var(--green-dim);
+      font-size: 12px;
+    }
+
+    .typing-dots span {
+      display: inline-block;
+      animation: blink-dot 1.2s infinite;
+    }
+    .typing-dots span:nth-child(2) { animation-delay: .2s; }
+    .typing-dots span:nth-child(3) { animation-delay: .4s; }
+
+    @keyframes blink-dot {
+      0%, 80%, 100% { opacity: .2; }
+      40%            { opacity: 1; }
+    }
+
+    /* ── INPUT ZONE ── */
+    .input-area {
+      flex-shrink: 0;
+      border-top: 1px solid var(--green-dim);
+      padding: 14px 24px 18px;
+      background: rgba(65,255,107,0.02);
+    }
+
+    .input-prompt {
+      font-size: 11px;
+      color: var(--green-dim);
+      letter-spacing: .1em;
+      margin-bottom: 8px;
+    }
+
+    .input-row {
+      display: flex;
+      align-items: center;
+      gap: 0;
+    }
+
+    .input-cursor {
+      color: var(--green);
+      font-size: 16px;
+      margin-right: 8px;
+      animation: blink 1s step-end infinite;
+    }
+
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+    .input-field {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--green);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 14px;
+      caret-color: var(--green);
+      text-shadow: 0 0 6px rgba(65,255,107,0.4);
+    }
+
+    .input-field::placeholder {
+      color: var(--green-dim);
+      opacity: .5;
+    }
+
+    .input-hint {
+      font-size: 10px;
+      color: var(--green-dim);
+      margin-top: 8px;
+      letter-spacing: .08em;
+    }
+
+    /* ── FOOTER ── */
+    .footer {
+      border-top: 1px solid var(--green-dim);
+      padding: 8px 24px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: var(--green-dim);
+      letter-spacing: .1em;
+      flex-shrink: 0;
+    }
+
+    /* ── BOOT SCREEN (overlay) ── */
+    .boot-overlay {
+      position: absolute;
+      inset: 0;
+      background: var(--bg);
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 40px 36px;
+      animation: boot-fade 0.6s ease 3.2s forwards;
+    }
+
+    @keyframes boot-fade {
+      to { opacity: 0; pointer-events: none; }
+    }
+
+    .boot-line {
+      overflow: hidden;
+      white-space: nowrap;
+      color: var(--green);
+      font-size: 13px;
+      letter-spacing: .06em;
+      opacity: 0;
+    }
+
+    .boot-line.l1  { animation: type-in .4s ease  .1s forwards; }
+    .boot-line.l2  { animation: type-in .4s ease  .5s forwards; }
+    .boot-line.l3  { animation: type-in .4s ease  .9s forwards; }
+    .boot-line.l4  { animation: type-in .4s ease 1.2s forwards; }
+    .boot-line.l5  { animation: type-in .4s ease 1.5s forwards; }
+    .boot-line.l6  { animation: type-in .4s ease 1.9s forwards; }
+    .boot-line.l7  { animation: type-in .4s ease 2.3s forwards; }
+    .boot-line.l8  { animation: type-in .4s ease 2.7s forwards; color: var(--green); text-shadow: 0 0 10px var(--green); }
+
+    @keyframes type-in {
+      to { opacity: 1; }
+    }
+
+    .boot-line.dim { color: var(--green-dim); }
+
+    /* ── FLICKER ── */
+    @keyframes flicker {
+      0%,100% { opacity: 1; }
+      92%      { opacity: 1; }
+      93%      { opacity: .85; }
+      94%      { opacity: 1; }
+      96%      { opacity: .9; }
+      97%      { opacity: 1; }
+    }
+
+    .screen { animation: flicker 8s infinite; }
+  </style>
+</head>
+<body>
+
+<div class="screen">
+
+  <!-- BOOT OVERLAY -->
+  <div class="boot-overlay">
+    <div class="boot-line dim l1">ROBCO INDUSTRIES (TM) UNIFIED OPERATING SYSTEM</div>
+    <div class="boot-line dim l2">COPYRIGHT 2075-2077 ROBCO INDUSTRIES</div>
+    <div class="boot-line dim l3">&nbsp;</div>
+    <div class="boot-line dim l4">-=[ ZAX SERIES AI — BUILD 7.4.1 ]=-</div>
+    <div class="boot-line dim l5">CHARGEMENT DES MODULES COGNITIFS.............. OK</div>
+    <div class="boot-line dim l6">CONNEXION BASE DE DONNÉES VAULT................. OK</div>
+    <div class="boot-line dim l7">INITIALISATION PROTOCOLE CONVERSATIONNEL........ OK</div>
+    <div class="boot-line l8">&gt; SYSTÈME PRÊT. BONJOUR.</div>
+  </div>
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="robco-logo">RobCo Industries — Unified OS // Vault-Tec Licensed</div>
+    <div class="zax-title">Z·A·X</div>
+    <div class="zax-sub">ZERO-FAULT ADAPTIVE XENIAL SYSTEM — SÉRIE 7</div>
+    <div class="header-status">
+      <span>VAULT : <span class="ok">EN LIGNE</span></span>
+      <span>NIVEAU SÉCURITÉ : <span class="ok">2 — NOMINAL</span></span>
+      <span>SESSION : <span class="ok">OUVERTE</span></span>
+    </div>
+  </div>
+
+  <div class="divider">────────────────────────────────────────────────────</div>
+
+  <!-- CHAT LOG -->
+  <div class="chat-log" id="chatLog">
+
+    <div class="msg-zax">
+      <span class="who">ZAX //</span>
+      <span class="bubble">Bonjour, résident. Je suis ZAX, système d'administration de la Vault.
+
+Comment puis-je vous assister aujourd'hui ?</span>
+    </div>
+
+    <div class="msg-player">
+      <span class="who">// Vous</span>
+      <span class="bubble">ZAX, j'ai besoin d'accéder aux dossiers médicaux du secteur C.</span>
+    </div>
+
+    <div class="msg-zax">
+      <span class="who">ZAX //</span>
+      <span class="bubble">Dossiers médicaux — Secteur C.
+
+Votre accréditation actuelle (Niveau 2) autorise l'accès aux fichiers généraux. Les dossiers individuels nécessitent une autorisation du Médecin-Chef ou un badge Niveau 4.
+
+Souhaitez-vous que je transmette une demande d'accès ?</span>
+    </div>
+
+    <div class="msg-player">
+      <span class="who">// Vous</span>
+      <span class="bubble">Oui, transmets la demande.</span>
+    </div>
+
+    <div class="msg-zax">
+      <span class="who">ZAX //</span>
+      <span class="bubble">Demande enregistrée et transmise au Médecin-Chef.
+
+Référence : REQ-2027-0441
+Délai de réponse estimé : 4 à 6 heures.
+
+Autre chose ?</span>
+    </div>
+
+  </div>
+
+  <!-- INPUT -->
+  <div class="input-area">
+    <div class="input-prompt">ENTREZ VOTRE MESSAGE :</div>
+    <div class="input-row">
+      <span class="input-cursor">&gt;</span>
+      <input
+        class="input-field"
+        id="inputField"
+        type="text"
+        placeholder="Tapez votre requête…"
+        autocomplete="off"
+        spellcheck="false"
+      />
+    </div>
+    <div class="input-hint">[ ENTRÉE ] Envoyer &nbsp;·&nbsp; [ ÉCHAP ] Effacer</div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <span>TERMINAL ID : VLT-TRM-04</span>
+    <span>14/04/2027 — 14:33:07</span>
+    <span>UPTIME : 847J 03H 12M</span>
+  </div>
+
+</div>
+
+<script>
+  const input = document.getElementById('inputField');
+  const log   = document.getElementById('chatLog');
+
+  function addMsg(who, text, isPlayer) {
+    const wrap = document.createElement('div');
+    wrap.className = isPlayer ? 'msg-player' : 'msg-zax';
+
+    const whoEl = document.createElement('span');
+    whoEl.className = 'who';
+    whoEl.textContent = isPlayer ? '// Vous' : 'ZAX //';
+
+    const bubble = document.createElement('span');
+    bubble.className = 'bubble';
+    bubble.textContent = text;
+
+    wrap.appendChild(whoEl);
+    wrap.appendChild(bubble);
+    log.appendChild(wrap);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function showTyping() {
+    const wrap = document.createElement('div');
+    wrap.className = 'msg-zax typing';
+    wrap.id = 'typing';
+    wrap.innerHTML = 'ZAX traite votre demande <span class="typing-dots"><span>.</span><span>.</span><span>.</span></span>';
+    log.appendChild(wrap);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function removeTyping() {
+    const t = document.getElementById('typing');
+    if (t) t.remove();
+  }
+
+  // Fausse réponse ZAX pour le proto
+  const fauxReponses = [
+    "Information reçue. Je traite votre demande.\n\nVeuillez patienter — consultation des archives en cours.",
+    "Cette requête nécessite une vérification de votre accréditation.\n\nNiveau actuel : 2. Niveau requis : 3 minimum.",
+    "Données trouvées. Le secteur concerné a été mis en quarantaine le 08/04/2027 suite au protocole 7-B.\n\nSouhaitez-vous un rapport détaillé ?",
+    "Aucun enregistrement correspondant dans la base de données accessible.\n\nCette information est peut-être classifiée ou inexistante.",
+    "Requête enregistrée. Transmission aux autorités compétentes de la Vault.\n\nRéférence : REQ-2027-" + (Math.floor(Math.random()*9000)+1000),
+  ];
+
+  let ri = 0;
+
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && input.value.trim()) {
+      const txt = input.value.trim();
+      input.value = '';
+      addMsg('Vous', txt, true);
+      showTyping();
+      setTimeout(() => {
+        removeTyping();
+        addMsg('ZAX', fauxReponses[ri % fauxReponses.length], false);
+        ri++;
+      }, 1200 + Math.random() * 800);
+    }
+    if (e.key === 'Escape') input.value = '';
+  });
+
+  // Horloge
+  function tick() {
+    const now = new Date();
+    const hms = now.toTimeString().slice(0,8);
+    const footer = document.querySelector('.footer span:nth-child(2)');
+    if (footer) footer.textContent = '14/04/2027 — ' + hms;
+  }
+  setInterval(tick, 1000);
+</script>
+
+</body>
+</html>

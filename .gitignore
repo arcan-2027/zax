@@ -1,0 +1,8 @@
+# Secrets — jamais dans le repo (cf. docs/position-zax-auth-pipboy.md §3)
+.env
+.env.development
+.env.*.local
+
+# Dépendances / build
+node_modules/
+dist/

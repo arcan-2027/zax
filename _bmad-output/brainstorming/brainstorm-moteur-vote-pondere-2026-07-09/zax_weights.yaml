@@ -1,0 +1,149 @@
+# ============================================================================
+# ZAX — Configuration du moteur de vote pondéré
+# ----------------------------------------------------------------------------
+# Fichier chargé À CHAUD (runtime). Modifiable SANS redéploiement.
+# Destiné aux scénaristes ET aux orgas : chaque valeur est un curseur de jeu.
+#
+# Rappel de la formule élue à chaque message par le moteur :
+#   S(p) = Wt·T(p) + Wk·K(p) + Wc·C(p) + Wi·I(p) + Wo·O(p) + We·E(p)
+# La perso au plus haut S(p) voix la réponse ; les GATES durs filtrent avant.
+#
+# Les identifiants de perso (le_gardien, l_archiviste, ...) doivent
+# correspondre au champ NAME (slugifié) des modules config/personnalites/*.yaml
+# ============================================================================
+
+version: 1
+
+# ---------------------------------------------------------------------------
+# 1) POIDS GLOBAUX de la formule S(p)
+# ---------------------------------------------------------------------------
+# Chaque terme T/K/C/I/O/E est normalisé entre 0 et 1 par le moteur.
+# Les poids ci-dessous n'ont PAS besoin de sommer à 1 : les scores sont
+# comparés entre perso, pas interprétés comme des probabilités.
+# Règle d'or : le TRIGGER doit dominer, sinon ZAX "dérive" sans qu'on l'appelle.
+poids:
+  trigger:        1.00   # T — le message appelle-t-il cette perso (hard/soft words)
+  karma:          0.55   # K — proximité karmique de l'interlocuteur (LOVE/FBDN)
+  contexte:       0.50   # C — similarité sémantique (embeddings) avec les FAVS
+  inertie:        0.70   # I — continuité, anti flip-flop (voir 'dynamique')
+  ouverture:      0.40   # O — appartenance à la palette de l'ouverture courante
+  environnement:  0.30   # E — heure du GN, surchauffe, arrivée d'un module GECK
+
+# ---------------------------------------------------------------------------
+# 2) DYNAMIQUE DES BASCULES — le "caractère" du switch
+# ---------------------------------------------------------------------------
+dynamique:
+  # Curseur maître du chaos. Divise l'inertie : >1 = ZAX plus erratique
+  # (bascule vite), <1 = ZAX plus collant (reste sur une perso).
+  # Peut être écrasé par ouverture (voir section 'ouvertures').
+  temperature: 1.0
+
+  # δ (delta) — le 2e du classement devient VOIX DE FOND si S2 >= S1 - delta.
+  # Plus grand = plus souvent une voix parasite en fond (foreshadowing).
+  delta_voix_de_fond: 0.08
+
+  # Bonus fixe ajouté à la perso ACTUELLEMENT en contrôle (terme I, part statique).
+  inertie_active_bonus: 0.35
+
+  # Hystérésis : une perso récemment quittée reste "chaude" quelques échanges.
+  hysteresis:
+    boost_a_l_activation: 0.40  # chaleur H(p) reçue quand p prend le contrôle
+    lambda_decroissance: 0.75   # H(p) *= λ à chaque échange (0..1). 0.75 ≈ 3-4 tours de mémoire
+
+  # TIME par défaut : nb d'échanges min avant qu'une perso puisse être destituée.
+  # Écrasé par le champ TIME du module de chaque perso s'il est défini.
+  time_defaut: 3
+
+# ---------------------------------------------------------------------------
+# 3) NORMALISATION & BORNES
+# ---------------------------------------------------------------------------
+normalisation:
+  clamp_min: 0.0
+  clamp_max: 1.0
+  karma_max_total: 200        # karma_pj (0-100) + karma_faction (0-100)
+  embedding_seuil: 0.70       # sous ce seuil, C(p) = 0 (cf REF-12, seuil ~0.7)
+  # Force du terme T selon le nb de DECL-SOFT coocurrents dans la phrase.
+  # (Un DECL-HARD présent force T = 1.0, court-circuite ce barème.)
+  soft_trigger:
+    un_mot:          0.40
+    deux_mots:       0.55
+    trois_mots_plus: 0.70
+
+# ---------------------------------------------------------------------------
+# 4) GATES DURS — filtres déterministes (NE sont pas des poids)
+# ---------------------------------------------------------------------------
+gates:
+  # Kill-word : si le DISJ-SPEC de l'active apparaît -> S(active) = -infini,
+  # et la cible EXIT de l'active reçoit un gros bonus (coupure sèche).
+  killword:
+    actif: true
+    bonus_exit: 0.60
+
+  # Un challenger ne peut destituer l'active que si celle-ci a tenu >= son TIME.
+  time_gate:
+    actif: true
+
+  # Exclusion de Pauli : combos interdits. Si l'une est active, l'autre est gatée.
+  # (paires, symétriques)
+  exclusions_pauli:
+    - [le_gardien, l_enfant]
+    - [le_gardien, la_mere]
+
+  # Filet ultime : si TOUT est gaté / aucun signal exploitable.
+  defaut_ultime: le_gardien
+
+# ---------------------------------------------------------------------------
+# 5) ENVIRONNEMENT E(p) — le monde hors-texte penche la balance
+# ---------------------------------------------------------------------------
+environnement:
+  # Surchauffe : débit de messages anormal (troll/spam) -> pousse le Gardien.
+  surchauffe:
+    fenetre_messages: 5        # observe les N derniers messages du terminal
+    seuil_par_minute: 12       # au-delà = surchauffe
+    perso_cible: le_gardien
+    boost: 0.50
+
+  # Cycle circadien du GN (heure locale). Plusieurs tranches possibles.
+  heure_du_gn:
+    - { de: "23:00", a: "05:00", perso: mood_manager, boost: 0.30 }
+
+  # Un module GECK vient d'arriver -> excite les perso qui s'en soucient.
+  module_geck_recu:
+    fenetre_echanges: 3        # l'excitation retombe après N échanges
+    boost_par_perso:
+      le_scientifique: 0.40
+      l_archiviste:    0.30
+
+# ---------------------------------------------------------------------------
+# 6) ÉTATS D'OUVERTURE — surcouche O(p) + overrides
+# ---------------------------------------------------------------------------
+# 'palette' = perso qui reçoivent O(p) > 0 pendant cette ouverture.
+# 'perso_par_defaut' reçoit 'plancher_defaut' (elle affleure toujours).
+# 'temperature' (optionnel) écrase la température globale pour l'ouverture.
+ouvertures:
+  "1":
+    perso_par_defaut: happiness_officer
+    plancher_defaut: 0.35
+    palette: [happiness_officer, le_board, le_gardien, le_technicien]
+    temperature: 0.8          # Ouv.1 : bureaucratique, stable
+  "2":
+    perso_par_defaut: le_diplomate
+    plancher_defaut: 0.30
+    palette: [le_diplomate, l_archiviste, le_negociateur, happiness_officer, le_gardien]
+    temperature: 1.0          # Ouv.2 : on apprend à naviguer
+  "3":
+    perso_par_defaut: mood_manager
+    plancher_defaut: 0.25
+    palette: [le_scientifique, l_enfant, le_soldat_perdu, le_juge, mood_manager, le_gardien]
+    temperature: 1.4          # Ouv.3 : erratique, imprévisible
+
+# ---------------------------------------------------------------------------
+# 7) CONTRÔLE ORGA  [surface : Admin]
+# ---------------------------------------------------------------------------
+orga:
+  force:
+    verrou_defaut_secondes: 300   # durée d'un forçage verrouillé par défaut (5 min)
+  meteo_interne:
+    exposer_scores: true          # dashboard : afficher S(p) de chaque perso
+    alerte_pre_shutdown: true     # ping quand une perso est sur le point d'être destituée
+    log_raison_bascule: true      # journaliser le trigger déclencheur de chaque switch
