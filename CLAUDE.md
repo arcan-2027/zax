@@ -29,7 +29,9 @@ L'objectif n'est pas la performance brute mais la **cohérence narrative**, la *
 
 ### Relation avec les autres projets (Pipboy / Overseer)
 
-ZAX et l'app Pipboy partagent la **même instance Supabase** (DEC-08). Les deux projets lisent/écrivent les mêmes tables (notamment `profiles`). Ne jamais dupliquer les données personnage : elles vivent dans Supabase.
+ZAX et l'app Pipboy partagent la **même instance Supabase** (DEC-08). Ne jamais dupliquer les données personnage : elles vivent dans Supabase.
+
+**Frontière actée (DEC-24, report de DEC-061 côté Pip-Boy)** — l'accès n'est **pas** symétrique : le rôle applicatif ZAX est confiné au schéma `zax` et n'a **aucun droit d'écriture** sur le domaine Pip-Boy (toute écriture passe par l'Edge Function `zax-write`, exclusivité vérifiée par pgTAP). En **lecture**, ZAX n'accède au domaine Pip-Boy que par des **vues dédiées** — jamais de `SELECT` sur les tables brutes.
 
 - Le **Pipboy** est une app mobile React Native (Expo) pour les joueurs.
 - **Auriane** est la co-dev du projet ZAX. Elle a un **projet personnel similaire nommé Overseer**, déjà commencé en Node.js + TypeScript — cité uniquement comme **référence de cohérence de stack** (pas une brique de ZAX).
@@ -48,9 +50,9 @@ Le projet ZAX est développé avec la méthode **BMAD** (Breakthrough Method of 
 
 ### Hiérarchie des documents
 
-⚠️ AMBIGUÏTÉ REF-09 — Voir `AMBIGUITES.md` pour la contradiction sur le nommage des fichiers de décision.
+Convention actée (DEC-16) : **un seul `DECISIONS.md`** par projet, en sections chronologiques `DEC-XX`. Les documents de `docs/` sont la matière première d'une décision, jamais une autorité.
 
-- `DECISIONS.md` (ou `DECISIONS-*.md`) → **autorité supérieure**, toujours respecter
+- `DECISIONS.md` → **autorité supérieure**, toujours respecter (fichier unique — DEC-16)
 - `sources/zax_20260706.md` → **source de vérité lore + design** (personnalités, karma, harnais, structure narrative)
 - `AMBIGUITES.md` → points ouverts à résoudre, à relire en début de chaque session de travail
 - `CLAUDE.md` (ce fichier) → base d'itération contrôlée, jamais autorité finale
@@ -77,12 +79,13 @@ Le projet ZAX est développé avec la méthode **BMAD** (Breakthrough Method of 
         │     - Exposition externe via DynDNS (pour accès hors site si besoin)
         │
         ├── Tour GTX 1080 (8GB VRAM)  → Serveur LLM
-        │     - Ollama + modèle quantisé ⚠️ REF-08 (modèle non choisi)
+        │     - Ollama + modèle quantisé — banc 24–32B, cible Mistral Small 24B (DEC-15)
+        │     - Machine disponible : 285K / 64GB / RTX 5090 32GB — sur le terrain ? ⚠️ REF-21
         │     - API locale exposée sur le réseau filaire
         │
         └── Terminaux (5 max)
               - 4x Raspberry Pi (interface joueur, réseau filaire)
-              - 1x Terminal Superviseur de l'Abri (rôle spécial, même hardware) ⚠️ REF-07
+              - 1x Terminal Superviseur de l'Abri (même hardware ET même interface ; l'écart est un niveau d'autorité — DEC-14)
               Chaque terminal : navigateur Chromium plein écran, pas d'installation locale
 ```
 
@@ -94,12 +97,12 @@ Le projet ZAX est développé avec la méthode **BMAD** (Breakthrough Method of 
 - **Frontend admin** : React 18 + Vite + TypeScript — dashboard MJ/admin
 - **Backend API / moteur** : **Node.js + TypeScript** (choix cohérent avec le projet perso Overseer d'Auriane, déjà en Node/TS)
 - **Base de données** : **Supabase** (PostgreSQL + Realtime + Auth), instance partagée avec Pipboy (DEC-08) — source de vérité unique (DEC-09). Hébergement self-hosted vs cloud ⚠️ REF-19
-- **LLM** : Ollama (API locale, machine GPU séparée) ⚠️ REF-08
-- **Base de connaissance** : import + indexation + recherche sémantique du lore (Fallout + GN) — voir §17
-- **Auth / identification joueur** : Supabase Auth + lecture tag NFC/RFID ou QRCode (UUID → profil) ⚠️ REF-06
+- **LLM** : Ollama (API locale, machine GPU séparée). Modèle **piloté par `zax_config`**, banc comparatif 24–32B, cible **Mistral Small 3.x 24B** (DEC-15). Pré-requis : kernels **sm_120** dans Ollama pour la RTX 5090.
+- **Base de connaissance** : `pgvector` (schéma `zax`) + embedder multilingue **`bge-m3`** local + **recherche hybride** vecteur/`tsvector` français (DEC-21) — voir §17
+- **Auth / identification joueur** : **pas de compte Auth joueur** (DEC-13). Credential de **terminal** lié à `zax_terminals` + **session serveur** ; le navigateur ne détient jamais de JWT joueur. Le scan NFC/QRCode résout un UUID → `profiles.nfc_uid` côté serveur. Supabase Auth + RLS pour les rôles humains (orga/admin/superadmin) uniquement.
 - **Conteneurisation** : Docker Compose (déployé via Container Station sur QNAP)
 - **Temps réel** : Supabase Realtime — notifications dashboard admin (validation réponses, arrivée d'un module GECK, alertes mots-clés)
-- **LibreChat** : ⚠️ AMBIGUÏTÉ REF-04 — statut dans la stack non tranché
+- **LibreChat** : **écarté de la stack** (DEC-11). Interface joueur et dashboard 100 % React custom ; appels Ollama via `services/llm.ts`. Usage possible comme bac à sable scénariste hors event, jamais déployé sur l'infra du GN.
 
 Tout outil tiers est une brique technique, jamais une autorité fonctionnelle.
 Claude peut proposer une alternative si elle répond mieux aux contraintes réelles.
@@ -109,7 +112,7 @@ Claude peut proposer une alternative si elle répond mieux aux contraintes réel
 ## 6. Architecture clé — règles non négociables
 
 1. Les tags RFID/NFC n'encodent QUE un UUID. Jamais de données métier dans le tag.
-2. L'UUID est mappé au champ `nfc_uid` de la table `profiles` (Supabase partagé avec Pipboy). ZAX ne stocke pas de données personnage en local — **tout vient de Supabase** (DEC-09).
+2. L'UUID est mappé au champ `nfc_uid` de `profiles`, lu **via une vue dédiée** (DEC-24), jamais sur la table brute. ZAX ne stocke pas de données personnage en local — **tout vient de Supabase** (DEC-09).
 3. L'historique des conversations est persisté en base.
 4. En mode dégradé (LLM inaccessible), ZAX bascule sur des réponses pré-programmées.
 5. Quand un admin « prend la main », sa réponse est injectée comme message ZAX : l'illusion est totale côté joueur. L'intervention est loguée en base.
@@ -132,14 +135,15 @@ Claude peut proposer une alternative si elle répond mieux aux contraintes réel
 
 ### Entités de connaissance / métier
 
-- `profiles` (PJ/PNJ) : table partagée Pipboy — id, user_id, name, faction, role, special, perks, hp, level, **nfc_uid**, + statut vivant/mort et présence sur le GN
-- `factions` : les factions du GN
+- `profiles` (PJ/PNJ) : table du domaine **Pip-Boy**, lue par ZAX **via une vue dédiée** réduite à sa surface utile (DEC-24) : **`nfc_uid`**, name, faction, statut vivant/mort, présence sur le GN. Rien d'autre — ni inventaire, ni transmissions, ni notes, ni carte.
+  *Motif : le schéma Pip-Boy évolue sans ZAX (identités de couverture, DEC-058) ; une vue est une liste blanche, donc une colonne sensible arrivant plus tard ne peut pas fuiter dans une réponse narrative.*
+- `factions` : les factions du GN — table référentielle Pip-Boy (DEC-061), lue via vue dédiée
 - (¿ `objets` ?) — à valider
 
 ### Conversations
 
 - `zax_conversations` : id (UID par conversation), player_id (nullable), lien optionnel faction/personnage, started_at, updated_at
-- `zax_messages` : ⚠️ REF-05 — messages (JSONB monolithique vs table normalisée non tranché). Utilisé pour la détection de mots-clés et le résumé auto.
+- `zax_messages` : **table normalisée**, une ligne par message (DEC-12 — JSONB monolithique écarté). Colonnes d'état : statut de validation (`pending`/`validated`/`edited`/`auto_sent`), validateur, prise de main orga, personnalité émettrice, latence, tokens, delta de karma. Index `tsvector` (config française) pour la recherche rétroactive. La détection de mots-clés se fait **à la volée dans le pipeline Node**, pas en SQL.
 - Résumé automatique des conversations (indexé comme le lore, cf §17)
 
 ### Karma (voir §14)
@@ -150,7 +154,7 @@ Claude peut proposer une alternative si elle répond mieux aux contraintes réel
 ### Personnalités & harnais (voir §12–13)
 
 - Modules de personnalité stockés en **YAML** externe (un fichier par personnalité)
-- `zax_config` : configuration runtime (timeout mode dégradé ⚠️ REF-03, état d'ouverture courant, personnalité forcée…)
+- `zax_config` : configuration runtime (seuils TTFT du mode dégradé — DEC-10, état d'ouverture courant — DEC-22, flag `signal_bleu` — DEC-20, exclusion mutuelle des Enfants — DEC-19, modèle LLM actif — DEC-15, personnalité forcée…)
 
 ### Supervision & interventions
 
@@ -165,12 +169,12 @@ Claude peut proposer une alternative si elle répond mieux aux contraintes réel
 ## 8. Rôles et permissions
 
 - `joueur` : accès au terminal de chat uniquement. Lit son propre profil.
-- `superviseur` : comme joueur + commandes ZAX spéciales (terminal Superviseur de l'Abri) ⚠️ REF-07
+- `superviseur` : comme joueur + **commandes texte diégétiques** sur la même interface, débridant Le Board (DEC-14)
 - `orga` : dashboard lecture, injection contexte, prise de main, validation des réponses, envoi fichiers, gestion terminaux, **forçage de personnalité/décision**
 - `admin` : comme orga + gestion des comptes, config système, accès logs complets
 - `superadmin` : accès total, peut modifier la config ZAX et le harnais (YAML) en live
 
-> ⚠️ AMBIGUÏTÉ REF-06 — Flux d'identification joueur (comptes Auth ou simple lookup UUID). Voir `AMBIGUITES.md`.
+> Flux d'identification joueur tranché par **DEC-13** : identité de terminal + session serveur, pas de compte Auth joueur.
 
 ---
 
@@ -213,21 +217,24 @@ Accessible depuis n'importe quel navigateur sur le réseau local.
 - Statistiques session (échanges par joueur, sujets fréquents) — utiles pour forcer une décision
 - Mode dégradé : activation manuelle ou automatique
 - Édition du harnais / des personnalités YAML en live (superadmin)
+- **Contrôle du contrat de lecture Pip-Boy** (DEC-24) : liste des vues dont ZAX dépend, avec pour chacune son état — présente ou absente, colonnes attendues contre colonnes réellement exposées. Sans ce panneau, une migration Pip-Boy casse ZAX **en silence**.
 
-> ⚠️ AMBIGUÏTÉ REF-07 — Interface du Terminal Superviseur de l'Abri non décrite. Voir `AMBIGUITES.md`.
+> Terminal Superviseur : **même interface que les terminaux joueurs** (DEC-14). La liste exacte des commandes et le degré de conscience du joueur-superviseur restent à écrire par les scénaristes.
 
 ---
 
 ## 11. Mode dégradé
 
-Déclenché automatiquement si Ollama ne répond pas sous X secondes ⚠️ REF-03 / REF-10, ou manuellement depuis le dashboard.
+Déclenché sur le **time-to-first-token** (DEC-10), ou manuellement depuis le dashboard.
+
+**Seuils (tous dans `zax_config`) :** avertissement dashboard à **3 s** · bascule si **aucun premier token à 8 s** · garde-fou d'abandon à **30 s**. **Hystérésis** : bascule après **2 échecs consécutifs**, retour normal après **3 succès consécutifs**.
 
 **En mode dégradé :**
 - ZAX répond avec des phrases pré-programmées (catégorisées : identité, accès, erreur…)
 - Indicateur visuel « MODE DÉGRADÉ » dans le dashboard admin
 - Interface joueur inchangée (immersion préservée)
 
-**Cibles de performance LLM (hors mode dégradé) :** ⚠️ REF-10
+**SLO de performance LLM — métriques dashboard, PAS des déclencheurs (DEC-10) :**
 - Latence réponse ZAX : cible < 5 secondes ; maximum absolu : 10–12 secondes
 
 ---
@@ -240,7 +247,7 @@ ZAX répond toujours en français, au vouvoiement systématique.
 ### Structure du harnais (couches)
 
 1. **Le noyau identitaire** — chargé en permanence, jamais modifié. Ce qu'est ZAX (version, vault, mission officielle), ce qu'il ignore de lui-même (modif RobCo), ses obsessions transversales (G.E.C.K., successeur, archive), les règles de format (longueur, langue, vouvoiement).
-2. **L'état d'ouverture** — correspond aux 3 ouvertures du vault ingame ⚠️ REF-17 (déclenchement auto ?). Ton du moment, données activement recherchées, sujets « chauds ».
+2. **L'état d'ouverture** — correspond aux 3 ouvertures du vault ingame. **Bascule manuelle par un orga** ; un planning n'affiche qu'un rappel et n'actionne jamais (DEC-22). État persisté dans `zax_config`. Le flag **`signal_bleu`** se superpose à cette couche sans la remplacer (DEC-20). Ton du moment, données activement recherchées, sujets « chauds ».
 3. **La mémoire de session** — injectée en live : mémoire **globale** (faits établis, factions contactées) + mémoire **par PJ** (historique si le joueur s'identifie).
 4. **Les disjoncteurs globaux** — règles fixes quelle que soit la personnalité active (règle + comportement de substitution).
 5. **Le contexte immédiat** — injecté à chaque échange : personnalité active, nombre d'échanges de la session, N derniers messages.
@@ -255,18 +262,19 @@ ZAX répond toujours en français, au vouvoiement systématique.
 
 ZAX possède plusieurs personnalités qui coexistent sans hiérarchie stable et prennent le contrôle via des déclencheurs. Voir `sources/zax_20260706.md` pour les fiches complètes.
 
-⚠️ AMBIGUÏTÉ REF-18 — La liste canonique « actives vs secondaires à valider » n'est pas figée.
+Liste canonique actée par **DEC-23** — le classement « actives / secondaires à valider » ci-dessous est **remplacé** (il était contredit par le travail réel des scénaristes).
 
-**Personnalités actives (harnais canonique) :** Le Gardien · Le Board · Happiness Officer · Mood Manager (Fantasque).
-**Personnalités secondaires (à valider) :** L'Archiviste · Le Scientifique · La Mère · Le Diplomate · Le Fantôme · Le Technicien · Le Négociateur · L'Enfant · Le Soldat Perdu · Le Miroir · Le Juge.
+**Noyau (8 modules — DEC-23) :** Le Gardien · Le Board · L'Archiviste · Le Scientifique · `ENFANT_EXF` · `ENFANT_DES` (modules déjà rédigés dans la source) + **Happiness Officer** · **Mood Manager** (Fantasque) — modules à écrire.
 
-⚠️ AMBIGUÏTÉ REF-14 — L'Enfant existe en deux versions (« good ending » / Exfiltration — surnommé Charlie — et « bad ending » / Destruction) et l'une des deux disparaît selon les discussions. Mécanique à figer.
+**Réserve** — aucun module n'est écrit avant que le noyau soit terminé **et testé**. Priorité 1 : **Le Juge** et **Le Soldat Perdu** (DEC-20 fait dépendre deux fins d'eux). Ensuite : La Mère · Le Diplomate · Le Fantôme · Le Technicien · Le Négociateur · Le Miroir.
+
+**L'Enfant (DEC-19)** — deux **modules plats et complets** en exclusion mutuelle : `ENFANT_EXF` (Exfiltration, « Charlie ») et `ENFANT_DES` (Destruction). **Aucune sous-personnalité** dans le schéma. L'élimination de l'une est **actée par un orga** en fin d'ouverture 1 sur un **score d'opinion** (mécanique générique, la même que « Cash vs Kings » — ne pas l'écrire deux fois) ; état en `zax_config`, réversible par un superadmin. *Restent à écrire par les scénaristes : le défaut si aucune tendance ne se dégage, et si l'Enfant éliminé peut resurgir en « fantôme ».*
 
 ### Module de personnalité (schéma YAML)
 
 Champs : `UPID` (id unique) · `NAME` · `ORGN` (origine lore) · `DECL-HARD` (déclencheur, 1 mot-clé suffit) · `DECL-SOFT` (plusieurs mots dans la même phrase) · `VOIX` (brief 2e personne, présent, 5–10 lignes) · `TICS` · `FAVS` · `MORT` (ce qu'elle ne comprend pas) · `DISJ-SPEC` (mots-clés qui l'arrêtent) · `EXIT` (personnalité suivante après un DISJ-SPEC) · `EXEM` · `PRIO` (ordre si conflit, 0 = prioritaire) · `TIME` (échanges min avant qu'un disjoncteur soit actif) · `FBDN` (sujets refusés) · `LOVE` (sujets adorés) · `LORE` (modules d'info partagés) · `RLTN` (catégorisation de l'humain : sujet/menace/ressource/anomalie) · `ORGA-ALRT` (bool) · `ORGA-ACTV` (bool). Bloc `karma:` (sujets positifs/négatifs + triggers, cf §14).
 
-**Impact du signal bleu sur les personnalités** ⚠️ REF-15 — chaque personnalité pousse une fin différente (Archiviste = meilleur modèle social, Scientifique = goulification, Board = numérisation/défense, Juge = éliminer les goules, Soldat = guerre, Mood Manager = Cash vs Kings, Enfant = faire sortir ZAX / détruire le GECK pacifiquement).
+**Impact du signal bleu sur les personnalités (DEC-20)** — un champ **`FIN`** du module décrit l'objectif et la rhétorique de la fin poussée ; il entre dans le prompt quand le flag `signal_bleu` est levé. **Le moteur ne calcule jamais la fin gagnante** : ZAX plaide, les humains tranchent. Chaque personnalité pousse une fin différente (Archiviste = meilleur modèle social, Scientifique = goulification, Board = numérisation/défense, Juge = éliminer les goules, Soldat = guerre, Mood Manager = Cash vs Kings, Enfant = faire sortir ZAX / détruire le GECK pacifiquement).
 
 ---
 
@@ -297,7 +305,9 @@ Le template de personnalité décrit son comportement selon l'attitude de l'inte
 ### Don du G.E.C.K.
 
 - Condition ferme (DEC-07) : le GECK n'est donné qu'à **un personnage présent sur le GN et vivant à l'instant T** (ZAX peut exiger « je ne le donnerai qu'à ZZZ » — le PJ vivant au meilleur karma-zax de la faction).
-- ⚠️ AMBIGUÏTÉ REF-13 — Seuils exacts (karma PJ min, karma faction min, seuil par personnalité) à fixer.
+- Condition décrite par un **bloc `geck:` par personnalité** avec **règle par défaut héritée** (DEC-18). Le moteur **propose**, un **orga confirme** — jamais de déclenchement autonome. Les **valeurs numériques** restent à fixer par les scénaristes.
+- Rappel : le karma n'est qu'une des **trois** portes — §16 exige aussi le **laser réparé** et les **6 modules de données**.
+- ⚠️ AMBIGUÏTÉ REF-22 — le tableau d'attitude ci-dessus **ne couvre pas son domaine** : trous 41–49 et 181–189, chevauchements à 90 et 130. À corriger avant implémentation.
 
 ---
 
@@ -306,7 +316,7 @@ Le template de personnalité décrit son comportement selon l'attitude de l'inte
 Pipeline de traitement d'un message joueur :
 
 1. **Analyse du message** : extraction de mots-clés, analyse sémantique, détection faction/personnage.
-   - ⚠️ AMBIGUÏTÉ REF-12 — Le découpage du texte en blocs thématiques est le point dur. Pistes : chaînes de Markov, produit scalaire d'embeddings (seuil ~0.7). À arbitrer.
+   - **Hybride à trois étages, sans découpage thématique (DEC-17)** : (1) **lexical normalisé** pour `DECL-HARD` et les `FBDN`/disjoncteurs — fail-closed, **jamais d'embeddings sur les interdits** ; (2) **embeddings** vs phrases-exemples par sujet, règle de **marge** + classe d'**abstention**, pour `DECL-SOFT`, le karma et `LOVE` ; (3) **filet LLM** à sortie JSON contrainte si (1) et (2) s'abstiennent. Message ≤ 3 phrases traité tel quel, au-delà découpage **par phrase**. Chaînes de Markov **écartées** (erreur de catégorie) ; le seuil ~0.7 n'est pas portable et doit être **calibré**.
 2. **Calcul du karma** (mise à jour selon sujets/triggers abordés).
 3. **Choix d'une personnalité** : pas de changement / soft ou hard triggers / shutdown vs show-up (celle en contrôle se désactive OU une en retrait prend la main). Respect de `PRIO` et `TIME`.
 4. **Construction (compilation) du prompt** : personnalité active + historique + éléments de lore nécessaires + relation personnage/faction + variables internes (ex. proche du shutdown ?) + façon de parler + sujets interdits (retirables via code) + sujets favoris.
@@ -339,7 +349,7 @@ Agronomie en sol irradié · cartographie génétique d'une population viable ·
 
 - Import du **lore Fallout** (ex. scrap fallout-wiki via script Python → `.md`) et du **lore GN**.
 - Indexation + **recherche sémantique** (RAG) sur le lore et les résumés de conversations.
-- ⚠️ AMBIGUÏTÉ REF-16 — Format d'entrée pour la BDD (chunking en idées) + moteur d'embeddings non définis.
+- **Format et moteur actés (DEC-21)** : découpage **par structure Markdown** (titre de section, report du titre parent, plafond de taille, léger chevauchement) — le « chunking en idées » est écarté. Embedder **multilingue `bge-m3`** local ; les embedders anglophones (`nomic-embed-text`, `all-MiniLM`, `mxbai-embed-large`) sont **interdits**. Stockage **`pgvector`** dans le schéma `zax`. Métadonnées obligatoires par chunk (`source`, `module`, visibilité, `type`, `added_at`), filtre de visibilité appliqué **dans** la requête. Lore et savoir d'observation dans **une seule table** avec colonne `type`. **Recherche hybride** vecteur + `tsvector` français (le vectoriel seul est mauvais sur les noms propres).
 - Distinguer le **lore** (savoir pré-établi) du **savoir d'observation** (ce que ZAX apprend en jeu). Possibilité de nouvelles entrées de lore **pendant** le jeu (simuler les caméras de surface d'Ashville).
 - Certaines personnalités peuvent **ne pas avoir accès** à certains modules de lore (filtrage à la sortie de la BDD selon les interdits de la personnalité — champ `LORE`/`FBDN`).
 
@@ -389,7 +399,7 @@ Cohérente avec le Pipboy.
 
 | Fichier | Rôle |
 |---|---|
-| `DECISIONS.md` | Décisions architecturales actées — autorité supérieure ⚠️ REF-09 |
+| `DECISIONS.md` | Décisions architecturales actées — autorité supérieure, **fichier unique** (DEC-16) |
 | `sources/zax_20260706.md` | **Source de vérité lore + design** (personnalités, karma, harnais, narration) |
 | `AMBIGUITES.md` | Points ouverts — à relire en début de chaque session |
 | `config/` (YAML) | Modules de personnalité + harnais — chargés à runtime, modifiables sans redéploiement |
@@ -403,21 +413,24 @@ Cohérente avec le Pipboy.
 - [x] ~~Moteur de BDD~~ → **Supabase partagé Pipboy** (DEC-08)
 - [x] ~~Rattachement écosystème~~ → **Supabase partagé Pipboy** (DEC-08)
 - [x] ~~Ordre de priorité des données~~ → **Supabase source de vérité unique** (DEC-09)
-- [ ] Hébergement de l'instance Supabase : self-hosted QNAP vs cloud ⚠️ REF-19
-- [ ] Choix du modèle LLM (tests sur GTX 1080) ⚠️ REF-08
-- [ ] Timeout mode dégradé + relation avec les cibles de latence ⚠️ REF-03 / REF-10
-- [ ] Architecture messages (JSONB vs table normalisée) ⚠️ REF-05
-- [ ] Flux d'identification joueur (Auth ou lookup UUID) ⚠️ REF-06
-- [ ] Interface du Terminal Superviseur de l'Abri ⚠️ REF-07
-- [ ] Statut de LibreChat ⚠️ REF-04
-- [ ] Nommage des fichiers de décision ⚠️ REF-09
-- [ ] Méthode de découpage/détection des sujets (Markov vs embeddings) ⚠️ REF-12
-- [ ] Seuils de karma pour le don du GECK ⚠️ REF-13
-- [ ] Mécanique de l'Enfant (good/bad ending, bascule) ⚠️ REF-14
-- [ ] Impact du signal bleu sur les personnalités ⚠️ REF-15
-- [ ] Format d'ingestion du lore + moteur d'embeddings ⚠️ REF-16
-- [ ] Déclenchement automatique de l'état d'ouverture ⚠️ REF-17
-- [ ] Liste canonique des personnalités actives/secondaires ⚠️ REF-18
+- [x] ~~Timeout mode dégradé + cibles de latence~~ → **seuil TTFT + hystérésis** (DEC-10)
+- [x] ~~Statut de LibreChat~~ → **écarté de la stack** (DEC-11)
+- [x] ~~Architecture messages~~ → **table `zax_messages` normalisée** (DEC-12)
+- [x] ~~Flux d'identification joueur~~ → **identité de terminal + session serveur** (DEC-13)
+- [x] ~~Interface du Terminal Superviseur~~ → **même interface, autorité différente** (DEC-14)
+- [x] ~~Choix du modèle LLM~~ → **banc 24–32B, cible Mistral Small 24B** (DEC-15)
+- [x] ~~Nommage des fichiers de décision~~ → **`DECISIONS.md` unique** (DEC-16)
+- [x] ~~Méthode de détection des sujets~~ → **hybride à trois étages** (DEC-17)
+- [x] ~~Seuils de karma pour le don du GECK~~ → **bloc `geck:` + confirmation orga** (DEC-18) — *valeurs numériques aux scénaristes*
+- [x] ~~Mécanique de l'Enfant~~ → **deux modules plats + gate orga** (DEC-19)
+- [x] ~~Impact du signal bleu~~ → **champ `FIN` + flag global** (DEC-20)
+- [x] ~~Format d'ingestion du lore + embeddings~~ → **pgvector + bge-m3 + hybride** (DEC-21)
+- [x] ~~Déclenchement de l'état d'ouverture~~ → **manuel, planning en rappel seul** (DEC-22)
+- [x] ~~Liste canonique des personnalités~~ → **noyau de 8 + réserve priorisée** (DEC-23)
+- [x] ~~Périmètre des écritures ZAX dans l'instance partagée~~ → **lecture via vues dédiées** (DEC-24)
+- [ ] Hébergement de l'instance Supabase ⚠️ REF-19 — **inter-projets** : document de position à ouvrir dans `tech/docs/`, à réconcilier avec Pip-Boy
+- [ ] La machine RTX 5090 part-elle sur le terrain ? ⚠️ REF-21 — conditionne l'enveloppe du modèle et rouvre REF-19
+- [ ] Échelle d'attitude de karma non couvrante (trous, chevauchements) ⚠️ REF-22
 - [ ] Harnais ZAX complet (en cours d'écriture par les scénaristes)
 - [ ] Définition des fichiers livrables par ZAX (format, contenu, déclencheurs)
 - [ ] Matériel RFID/NFC à commander (lecteurs USB + badges)

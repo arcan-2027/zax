@@ -62,7 +62,7 @@
 - Option C : Timeout configurable via `zax_config`, avec une valeur par défaut à choisir parmi A ou B
 - Option D : Double seuil — avertissement à 5s, basculement forcé à 12s
 
-**Statut :** ⏳ À décider
+**Statut :** ✅ Décidé (DEC-10) — seuil sur le **time-to-first-token** (option D reformulée) : warn 3 s, bascule si aucun premier token à 8 s, garde-fou 30 s, valeurs en `zax_config`, hystérésis 2 échecs / 3 succès. Les cibles `< 5 s` / `10–12 s` deviennent des SLO de performance, plus des déclencheurs.
 
 ---
 
@@ -80,7 +80,7 @@
 - Option C : LibreChat est évalué comme interface admin ou comme wrapper vers Ollama
 - Option D : LibreChat est conservé comme option de fallback si l'interface React custom pose problème
 
-**Statut :** ⏳ À décider
+**Statut :** ✅ Décidé (DEC-11) — **LibreChat écarté de la stack** (Option A). Interface joueur et dashboard 100 % React custom, appels Ollama via `services/llm.ts`. Un usage hors event comme bac à sable scénariste reste possible mais n'est pas déployé sur l'infra du GN.
 
 ---
 
@@ -98,7 +98,7 @@
 - Option C : Table `zax_messages` normalisée (id, conversation_id, role, content, created_at) — requêtes simples, statistiques natives
 - Option D : Hybride — JSONB pour le stockage + vue matérialisée pour la détection
 
-**Statut :** ⏳ À décider
+**Statut :** ✅ Décidé (DEC-12) — **table `zax_messages` normalisée** (Option C), JSONB monolithique écarté. Colonnes d'état par message (statut de validation, validateur, prise de main, personnalité émettrice, latence, tokens, delta de karma) + index `tsvector`. Détection de mots-clés à la volée dans le pipeline Node, pas en SQL.
 
 ---
 
@@ -115,7 +115,7 @@
 - Option B : Les joueurs ont des comptes Auth Supabase — le scan RFID déclenche une authentification server-side qui génère un JWT joueur
 - Option C : Authentification "service role" pour toutes les opérations ZAX — contourne les RLS joueur, simplifie le flux mais impose une vigilance accrue côté middleware
 
-**Statut :** ⏳ À décider
+**Statut :** ✅ Décidé (DEC-13) — **pas de compte Auth joueur** : credential de terminal lié à `zax_terminals` + session serveur (le navigateur ne détient jamais de JWT joueur). Orga/admin/superadmin gardent de vrais comptes Auth et des RLS. Permissions joueur par middleware API (§6.7) + grants DEC-061. `service_role` partout : écarté.
 
 ---
 
@@ -133,7 +133,7 @@
 - Option C : Interface joueur + accès partiel au dashboard admin (vue lecture seule des terminaux)
 - Option D : À définir par les scénaristes (scope narratif à préciser avant décision technique)
 
-**Statut :** ⏳ À décider
+**Statut :** ✅ Décidé (DEC-14) — **même interface que les terminaux joueurs** (Option A) ; la différence est un niveau d'autorité (`zax_terminals.role = superviseur`) qui débride Le Board + des commandes texte diégétiques, sans menu caché. **Reste ouvert côté scénaristes** : liste des commandes et degré de conscience du joueur-superviseur.
 
 ---
 
@@ -151,7 +151,7 @@
 - Option C : Tests comparatifs sur la GTX 1080 avec le harnais ZAX avant décision
 - Option D : Architecture permettant le swap de modèle via `zax_config` (décision non bloquante)
 
-**Statut :** ⏳ À décider
+**Statut :** ✅ Décidé (DEC-15) — le duel Llama 3 8B / Mistral 7B est **périmé** : nouvelle machine RTX 5090 32 GB (Blackwell, compute 12.0). Banc comparatif **24–32B** (cible Mistral Small 3.x 24B) sur harnais complet, métrique TTFT, modèle piloté par `zax_config`. Pré-requis bloquant : kernels **sm_120** dans Ollama. Voir aussi REF-21.
 
 ---
 
@@ -168,7 +168,7 @@
 - Option B : `DECISIONS-*.md` multiples — un fichier par domaine (auth, llm, db, ui…)
 - Option C : `DECISIONS.md` principal + fichiers annexes référencés dedans
 
-**Statut :** ⏳ À décider
+**Statut :** ✅ Décidé (DEC-16) — **`DECISIONS.md` unique** par projet (Option A). La mention `DECISIONS-*.md` est retirée de `CLAUDE.md` §3 comme vestige de fusion ; `docs/` reste la matière première, jamais une autorité.
 
 ---
 
@@ -185,7 +185,7 @@
 - Option B : Trigger configurable indépendamment des cibles de latence (valeur par défaut à définir)
 - Option C : Pas de trigger automatique — mode dégradé activé uniquement manuellement par un admin
 
-**Statut :** ⏳ À décider
+**Statut :** ✅ Décidé (DEC-10) — même décision que REF-03 : les latences cibles sont des **SLO de performance**, le déclencheur est un seuil indépendant sur le TTFT avec hystérésis.
 
 ---
 
@@ -220,7 +220,7 @@
 - Option C : Classification par mots-clés simple (DECL-HARD/SOFT) sans NLP lourd
 - Option D : Hybride mots-clés (hard triggers) + embeddings (soft triggers/karma)
 
-**Statut :** ⏳ À décider
+**Statut :** ✅ Décidé (DEC-17) — **hybride à trois étages** (Option D étendue), **sans étape de découpage thématique** : lexical normalisé pour `DECL-HARD` et les `FBDN` (fail-closed, jamais d'embeddings sur les interdits) → embeddings vs phrases-exemples avec règle de marge et abstention pour le soft et le karma → filet LLM à sortie JSON contrainte. Découpage par phrase au-delà de 3 phrases. Chaînes de Markov **écartées** (erreur de catégorie). Seuil 0,7 à **calibrer**, non portable.
 
 ---
 
@@ -237,7 +237,7 @@
 - Option B : Double seuil indépendant (PJ ET faction)
 - Option C : Seuil paramétrable par personnalité (l'Archiviste donnant au meilleur contributeur, etc.)
 
-**Statut :** ⏳ À décider
+**Statut :** ✅ Décidé (DEC-18) — **bloc `geck:` par personnalité** (Option C) avec **règle par défaut héritée**, conforme au classement relatif de DEC-07. Le moteur **propose**, un **orga confirme** — jamais de déclenchement autonome. Les **valeurs numériques** restent à fixer par les scénaristes (équilibrage narratif).
 
 ---
 
@@ -249,7 +249,7 @@
 
 **Impact :** Structure de données des personnalités (sous-personnalités ? état évolutif ?) et logique de bascule dans le moteur.
 
-**Statut :** ⏳ À décider
+**Statut :** ✅ Décidé (DEC-19) — **deux modules YAML plats** (`ENFANT_EXF`, `ENFANT_DES`) en exclusion mutuelle, **aucune sous-personnalité** dans le schéma. Bascule actée par un **orga** en fin d'ouverture 1 sur un **score d'opinion** (mécanique générique partagée avec Cash vs Kings), état en `zax_config`, réversible superadmin. **Reste ouvert** : défaut si aucune tendance ; l'Enfant éliminé peut-il resurgir en « fantôme ».
 
 ---
 
@@ -261,7 +261,7 @@
 
 **Impact :** Comportements spécifiques par personnalité en fin de partie ; conditions de fin du GN.
 
-**Statut :** ⏳ À décider
+**Statut :** ✅ Décidé (DEC-20) — champ **`FIN`** au module de personnalité + **flag global `signal_bleu`** superposé à la couche état d'ouverture (pas un 4ᵉ état). **Le moteur ne calcule jamais la fin gagnante** : ZAX plaide, les humains tranchent. **Dépendance** : le contenu des 8 fins reste gelé jusqu'à REF-18/DEC-23 — 5 d'entre elles appartiennent à des personnalités hors noyau.
 
 ---
 
@@ -273,7 +273,7 @@
 
 **Impact :** Qualité et cohérence des réponses ; volume de préparation scénariste ; performance sur le hardware GN.
 
-**Statut :** ⏳ À décider
+**Statut :** ✅ Décidé (DEC-21) — **`pgvector` dans le schéma `zax`** + embedder **multilingue `bge-m3`** local (embedders anglophones **interdits**) + **recherche hybride** vecteur/`tsvector` français. Chunking **par structure Markdown**, pas « par idée ». Métadonnées obligatoires par chunk, filtre de visibilité **dans** la requête. Lore et savoir d'observation dans **une seule table** avec colonne `type`.
 
 ---
 
@@ -290,7 +290,7 @@
 - Option B : Bascule automatique (horaire / déclencheur d'événement)
 - Option C : Manuel avec possibilité d'automatisation planifiée
 
-**Statut :** ⏳ À décider
+**Statut :** ✅ Décidé (DEC-22) — **bascule manuelle** par un orga ; un planning optionnel **affiche un rappel** mais **n'actionne jamais** la bascule. État **persisté** dans `zax_config` (un redémarrage ne revient pas en ouverture 1).
 
 ---
 
@@ -302,7 +302,7 @@
 
 **Impact :** Périmètre de travail scénariste (nombre de templates YAML) et de test.
 
-**Statut :** ⏳ À décider
+**Statut :** ✅ Décidé (DEC-23) — **noyau de 8** : Gardien, Board, Archiviste, Scientifique, Enfant EXF, Enfant DES (modules déjà rédigés) + Happiness Officer et Mood Manager (à écrire). **Réserve** ouverte seulement après noyau terminé **et testé**, Le Juge et Le Soldat Perdu prioritaires (DEC-20 en dépend). Le classement « actives / secondaires » de §13 est remplacé — il était contredit par le travail réel.
 
 ---
 
@@ -319,7 +319,12 @@
 - Option B : Supabase cloud — géré, plus léger côté QNAP ; **mais** suppose une connectivité internet fiable le jour J (risque terrain fort), ou un mode dégradé/mirroir local
 - Option C : Cloud en nominal + réplica/snapshot local de secours activé pendant le GN
 
-**Statut :** ⏳ À décider
+**Statut :** ⏳ À décider — **volontairement non tranchée côté ZAX** (31/08/2026). C'est une question **inter-projets** (AMB-001 / AMB-004 de `tech/CLAUDE.md`) : l'instance est partagée avec Pip-Boy, dont le modèle est inverse (dégradation gracieuse, cloud faisant autorité au retour réseau). → **Action : ouvrir un document de position dans `tech/docs/`** et réconcilier avec Pip-Boy, sur le modèle de DEC-061.
+
+**Constats techniques à porter dans ce document (pas des décisions) :**
+- **Le QNAP n'est pas un hôte crédible pour une instance Supabase self-hosted complète** : une dizaine de conteneurs (postgres, gotrue, postgrest, realtime, storage, imgproxy, kong, meta, studio, analytics/vector) sur un Celeron N3150 / 4 GB qui héberge aussi l'app ZAX. Deux sorties : (a) **stack réduite** `postgres` + `postgrest` + `realtime` + `gotrue`, sans studio/storage/imgproxy/analytics (~1,5–2 GB, non officiel mais courant, couvre exactement l'usage ZAX) ; (b) **changer d'hôte** pour la machine 285K / 64 GB (voir REF-21), le QNAP redevenant la cible de sauvegarde.
+- **Option C (cloud nominal + réplica local) — mise en garde forte** : elle crée **deux sources de vérité pendant l'event**, contre DEC-09, et impose une réconciliation bidirectionnelle là où §6.10 exige « aucune perte de message ».
+- **Option B (cloud pur) : écartée** — incompatible avec « offline-first pendant l'event, sans exception ».
 
 ---
 
@@ -336,8 +341,57 @@
 - Option B : statu quo DEC-08 (écriture directe possible) — contredit le contrat Pip-Boy, à écarter sauf besoin identifié
 - Option C : liste explicite table par table (lecture/écriture) annexée au contrat d'API
 
-**Statut :** ⏳ À décider (à trancher lors de la réconciliation avec le côté Pip-Boy — cf. question Q8 de `docs/position-zax-auth-pipboy.md`)
+**Statut :** ✅ Décidé (DEC-24) — **Option A**, par report de **DEC-061** (13/07/2026, postérieur à la rédaction de cette ambiguïté, répond à la question Q8) : rôle ZAX confiné au schéma `zax`, **aucune écriture directe** sur le domaine Pip-Boy, exclusivité de `zax-write` **vérifiée par pgTAP**. **DEC-08 amendée** (l'accès lecture/écriture symétrique est caduc). En **lecture** : **vues dédiées uniquement** (`profiles` réduit à `nfc_uid`, nom, faction, statut vivant/mort, présence + `factions`), jamais de `SELECT` sur les tables brutes. **Un panneau du dashboard admin liste les vues dont ZAX dépend** avec leur état (présente/absente, colonnes attendues vs exposées).
 
 ---
 
-*Dernière mise à jour : 2026-07-12 — 20 ambiguïtés recensées (REF-01 à REF-20). REF-01, REF-02, REF-11 ✅ résolues (DEC-08, DEC-09). 9 décisions actées (DEC-01 à DEC-09) dans `DECISIONS.md`.*
+### REF-21 — La machine LLM (RTX 5090) part-elle sur le terrain ?
+
+**Source :** session du 31/08/2026 — mise à disposition d'une nouvelle machine (Core Ultra 9 285K 24 c / 64 GB RAM / RTX 5090 32 GB, compute capability 12.0 Blackwell, driver 577.00, 1,5 To libres).
+
+**Problème :** Cette machine remplace-t-elle la tour GTX 1080 du schéma §4 **le jour J**, ou reste-t-elle une machine de développement et de banc, l'event tournant sur la 1080 ? La question n'est pas tranchée.
+
+**Impact :** Structurant à trois niveaux.
+- **Choix du modèle (DEC-15)** : enveloppe 24–32B sur la 5090 contre 8–9B en Q4 sur 8 GB de VRAM Pascal. Deux mondes différents, deux réglages de harnais différents.
+- **Infra terrain** : ~600–800 W à la prise, refroidissement, onduleur, transport et sécurité physique d'une machine coûteuse sur un event de 48–72 h.
+- **REF-19** : si elle est sur site, son 285K / 64 GB écrase le Celeron N3150 / 4 GB du QNAP et devient l'hôte évident de l'app et de l'instance Supabase.
+
+**Options possibles :**
+- Option A : elle part sur site et remplace la tour GTX 1080 — à traiter comme une contrainte d'infra (alimentation, refroidissement, onduleur, transport)
+- Option B : machine de dev et de banc uniquement ; le jour J tourne sur la GTX 1080 — le modèle doit alors être choisi pour tenir dans 8 GB sur Pascal
+- Option C : elle part sur site, la GTX 1080 restant en secours froid avec un modèle plus petit pré-chargé
+
+**Conséquence immédiate, quelle que soit l'issue :** DEC-15 impose de **bencher les deux enveloppes** (un 8–9B et un 24B) tant que la question est ouverte, pour ne pas être bloqué par le choix final de machine.
+
+**Statut :** ⏳ À décider
+
+---
+
+### REF-22 — L'échelle d'attitude de karma ne couvre pas son domaine
+
+**Source :** `CLAUDE.md` §14 (tableau des attitudes) — détecté le 31/08/2026 lors de l'examen de REF-13.
+
+**Problème :** Le tableau des attitudes comporte des **trous** et des **chevauchements** :
+
+| Code | Attitude | Plage | Anomalie |
+|---|---|---|---|
+| A-TN | Très négative | 0–40 | — |
+| A-NG | Négative | 50–90 | **trou 41–49** |
+| A-NE | Neutre | 90–130 | **90 appartient aussi à A-NG** |
+| A-PO | Positive | 130–180 | **130 appartient aussi à A-NE** |
+| A-SU | « Suceur » | 190–200 | **trou 181–189** |
+
+Un karma total de 45 ou de 185 n'a **aucune attitude définie** ; 90 et 130 en ont **deux**. Environ 8 % de l'échelle a un comportement non spécifié.
+
+**Impact :** Le moteur doit choisir une attitude pour **toute** valeur de karma : sans correction, il faudra un comportement par défaut arbitraire, non documenté et invisible à la relecture. Le template de personnalité décrit son comportement **par attitude** (§14) : une attitude indéfinie signifie une personnalité sans consigne.
+
+**Options possibles :**
+- Option A : plages contiguës et bornes semi-ouvertes (`[0,45)`, `[45,90)`, `[90,130)`, `[130,180)`, `[180,200]`) — couverture totale, plus aucune ambiguïté de borne
+- Option B : conserver les intentions narratives et combler les trous par de nouvelles valeurs choisies par les scénaristes
+- Option C : rendre les seuils **paramétrables** (`zax_config`) avec une validation au démarrage refusant toute échelle non couvrante
+
+**Statut :** ⏳ À décider — arbitrage narratif (les bornes traduisent une intention de jeu), mais la **couverture totale** est une exigence technique non négociable
+
+---
+
+*Dernière mise à jour : 2026-08-31 — 22 ambiguïtés recensées (REF-01 à REF-22). ✅ Résolues : REF-01, REF-02, REF-03, REF-04, REF-05, REF-06, REF-07, REF-08, REF-09, REF-10, REF-11, REF-12, REF-13, REF-14, REF-15, REF-16, REF-17, REF-18, REF-20 (19). ⏳ Ouvertes : REF-19 (inter-projets, document de position à ouvrir dans `tech/docs/`), REF-21, REF-22 (3). 24 décisions actées (DEC-01 à DEC-24) dans `DECISIONS.md`.*
