@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZAX // ARCHIVE DE SESSION — Le moteur de conversation</title>
+<style>
+  :root{
+    --bg:#0A0A0A;
+    --phos:#39FF14;
+    --green-mid:#1DB308;
+    --green-dim:#0A5C0A;
+    --surface:#071407;
+    --border:#1A5C1A;
+    --amber:#FFB000;
+    --danger:#8B0000;
+    --danger-bright:#FF3B2F;
+    --overlay:rgba(6,8,6,0.95);
+    --mono:'Consolas','Lucida Console','Courier New',monospace;
+    /* colonnes de la Solution Matrix */
+    --col1:#39FF14;   /* detection exacte / deterministe */
+    --col2:#FFB000;   /* embeddings / fuzzy */
+    --col3:#FF3B2F;   /* LLM — toujours backup, jamais primaire */
+    --col4:#1DB308;   /* regles / maths deterministes */
+  }
+  *{margin:0;padding:0;box-sizing:border-box;border-radius:0!important;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--bg);
+    color:var(--green-mid);
+    font-family:var(--mono);
+    font-size:15px;
+    line-height:1.55;
+    overflow-x:hidden;
+    padding-bottom:6rem;
+  }
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:9998;
+    background:repeating-linear-gradient(to bottom,transparent 0 2px,rgba(0,0,0,0.18) 2px 4px);
+  }
+  body::after{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;
+    background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,0.55) 100%);
+  }
+  .wrap{max-width:1120px;margin:0 auto;padding:0 1.2rem;}
+  a{color:var(--phos);}
+  .glow{color:var(--phos);text-shadow:0 0 8px #39FF14,0 0 20px rgba(57,255,20,0.4);}
+  .amber{color:var(--amber);text-shadow:0 0 8px rgba(255,176,0,0.7);}
+  .danger{color:var(--danger-bright);text-shadow:0 0 8px rgba(139,0,0,0.9);}
+  .dim{color:var(--green-dim);}
+
+  header{
+    border-bottom:1px solid var(--border);
+    padding:2.2rem 0 1.4rem;
+    background:linear-gradient(to bottom,rgba(57,255,20,0.04),transparent 60%);
+  }
+  .bootline{font-size:.78rem;color:var(--green-dim);letter-spacing:.08em;}
+  .zax-title{
+    font-size:clamp(1.5rem,4.6vw,2.7rem);
+    letter-spacing:.1em;
+    margin:.7rem 0 .2rem;
+    color:var(--phos);
+    text-shadow:0 0 8px #39FF14,0 0 22px rgba(57,255,20,0.45);
+    text-transform:uppercase;
+  }
+  .zax-sub{font-size:clamp(.9rem,2.4vw,1.15rem);color:var(--green-mid);letter-spacing:.04em;}
+  .cursor{display:inline-block;width:.55em;height:1em;background:var(--phos);
+    vertical-align:-0.12em;animation:blink 1s steps(1) infinite;box-shadow:0 0 8px #39FF14;}
+  @keyframes blink{50%{opacity:0;}}
+  .statusbar{
+    margin-top:1.3rem;display:flex;flex-wrap:wrap;gap:.5rem 1.6rem;
+    font-size:.72rem;letter-spacing:.05em;color:var(--green-dim);
+    border:1px solid var(--border);background:var(--surface);
+    padding:.55rem .9rem;
+  }
+  .statusbar b{color:var(--green-mid);font-weight:normal;}
+  .led{display:inline-block;width:.6em;height:.6em;margin-right:.35em;vertical-align:baseline;}
+  .led.ok{background:var(--phos);box-shadow:0 0 6px #39FF14;}
+  .matrix-seg{letter-spacing:.1em;color:var(--green-dim);}
+  .matrix-seg .on{color:var(--phos);text-shadow:0 0 6px #39FF14;}
+  .matrix-seg .twist{color:var(--amber);text-shadow:0 0 6px var(--amber);animation:softblink 1.8s steps(1) infinite;}
+  .matrix-seg .special{color:var(--phos);text-shadow:0 0 10px #39FF14,0 0 18px rgba(57,255,20,.6);}
+
+  section{margin:3.2rem 0;position:relative;opacity:0;transform:translateY(14px);
+    transition:opacity .7s ease,transform .7s ease;}
+  section.vis{opacity:1;transform:none;}
+  .sec-head{
+    display:flex;align-items:baseline;gap:.8rem;flex-wrap:wrap;
+    border-bottom:1px solid var(--border);padding-bottom:.4rem;margin-bottom:1.2rem;
+  }
+  .sec-tag{
+    font-size:.68rem;letter-spacing:.14em;color:var(--bg);
+    background:var(--green-mid);padding:.1rem .5rem;text-shadow:none;
+  }
+  .sec-title{
+    font-size:clamp(1.1rem,3.2vw,1.5rem);color:var(--phos);
+    text-shadow:0 0 8px #39FF14,0 0 20px rgba(57,255,20,0.4);
+    letter-spacing:.06em;text-transform:uppercase;
+  }
+  .sec-note{font-size:.76rem;color:var(--green-dim);width:100%;}
+
+  .frame{border:1px solid var(--border);background:var(--surface);padding:1.1rem 1.2rem;position:relative;}
+  .frame::before,.frame::after{
+    content:"+";position:absolute;color:var(--phos);font-size:.9rem;line-height:1;text-shadow:0 0 6px #39FF14;
+  }
+  .frame::before{top:-0.5em;left:-0.32em;}
+  .frame::after{bottom:-0.5em;right:-0.32em;}
+
+  /* == GENESE (log) ========================================= */
+  .log-list{list-style:none;}
+  .log-list li{
+    padding:.5rem .3rem;border-bottom:1px dashed rgba(26,92,26,.5);
+    display:flex;gap:.7rem;align-items:baseline;flex-wrap:wrap;
+  }
+  .log-list li:last-child{border-bottom:none;}
+  .log-tag{
+    flex:none;font-size:.62rem;letter-spacing:.1em;padding:.05rem .45rem;
+    text-shadow:none;color:var(--bg);
+  }
+  .log-tag.user{background:var(--phos);box-shadow:0 0 8px rgba(57,255,20,.4);}
+  .log-tag.coach{background:var(--amber);box-shadow:0 0 8px rgba(255,176,0,.4);}
+  .log-tag.sys{background:var(--green-dim);}
+  .log-kind{flex:none;font-size:.68rem;color:var(--green-dim);letter-spacing:.06em;}
+  .log-txt{color:var(--green-mid);font-size:.86rem;flex:1;min-width:220px;}
+  .log-txt b{color:var(--phos);font-weight:normal;}
+
+  /* == MATRIX LEGEND ========================================= */
+  .col-legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.7rem;margin-bottom:1.6rem;}
+  .cl-pill{border:1px solid;padding:.6rem .8rem;font-size:.74rem;background:var(--surface);}
+  .cl-pill .cl-h{display:block;font-size:.65rem;letter-spacing:.14em;margin-bottom:.25rem;}
+  .cl-1{border-color:var(--col1);} .cl-1 .cl-h{color:var(--col1);text-shadow:0 0 6px var(--col1);}
+  .cl-2{border-color:var(--col2);} .cl-2 .cl-h{color:var(--col2);text-shadow:0 0 6px var(--col2);}
+  .cl-3{border-color:var(--col3);} .cl-3 .cl-h{color:var(--col3);text-shadow:0 0 6px var(--col3);}
+  .cl-4{border-color:var(--col4);} .cl-4 .cl-h{color:var(--col4);text-shadow:0 0 6px var(--col4);}
+  .cl-pill p{color:var(--green-mid);}
+
+  /* == ROW BLOCKS ============================================ */
+  .row-block{margin-bottom:1.8rem;border:1px solid var(--border);background:rgba(7,20,7,.4);}
+  .row-head{
+    display:flex;align-items:baseline;gap:.8rem;flex-wrap:wrap;
+    padding:.7rem .9rem;border-bottom:1px solid var(--border);background:rgba(57,255,20,.04);
+  }
+  .row-letter{
+    font-size:1.4rem;color:var(--phos);text-shadow:0 0 8px #39FF14,0 0 18px rgba(57,255,20,.5);
+    line-height:1;
+  }
+  .row-name{font-size:.85rem;letter-spacing:.06em;color:var(--green-mid);text-transform:uppercase;}
+  .row-verdict{
+    width:100%;font-size:.78rem;color:var(--green-dim);margin-top:.35rem;padding-top:.35rem;
+    border-top:1px dashed rgba(26,92,26,.5);
+  }
+  .row-verdict b{color:var(--phos);font-weight:normal;}
+  .cell-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);}
+  @media(max-width:820px){.cell-grid{grid-template-columns:repeat(2,1fr);}}
+  @media(max-width:520px){.cell-grid{grid-template-columns:1fr;}}
+  .cell{background:var(--bg);padding:.85rem .9rem;border-top:3px solid;min-height:auto;position:relative;}
+  .cell.c1{border-color:var(--col1);}
+  .cell.c2{border-color:var(--col2);}
+  .cell.c3{border-color:var(--col3);}
+  .cell.c4{border-color:var(--col4);}
+  .cell-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem;gap:.4rem;flex-wrap:wrap;}
+  .cell-id{font-size:.72rem;letter-spacing:.1em;}
+  .c1 .cell-id{color:var(--col1);text-shadow:0 0 6px var(--col1);}
+  .c2 .cell-id{color:var(--col2);text-shadow:0 0 6px var(--col2);}
+  .c3 .cell-id{color:var(--col3);text-shadow:0 0 6px var(--col3);}
+  .c4 .cell-id{color:var(--col4);text-shadow:0 0 6px var(--col4);}
+  .cell-body{font-size:.78rem;color:var(--green-mid);}
+  .badge{font-size:.6rem;letter-spacing:.08em;padding:.06rem .4rem;text-shadow:none;white-space:nowrap;}
+  .badge.resolved{background:var(--green-mid);color:var(--bg);}
+  .badge.abandoned{background:var(--danger);color:#fff;text-decoration:line-through;}
+  .badge.elsewhere{background:var(--phos);color:var(--bg);box-shadow:0 0 8px rgba(57,255,20,.5);}
+  .badge.reserve{background:var(--green-dim);color:var(--bg);}
+  .badge.tension{background:var(--amber);color:var(--bg);}
+  .badge.merged{background:transparent;border:1px solid var(--green-dim);color:var(--green-dim);}
+
+  .cell.merged-cell{opacity:.75;}
+  .cell.merged-cell .cell-body{font-style:italic;}
+
+  .tension-box{
+    margin:.7rem .9rem 0;border:1px dashed var(--amber);background:rgba(255,176,0,.05);
+    padding:.7rem .9rem;font-size:.78rem;color:var(--amber);
+  }
+  .tension-box b{text-shadow:0 0 6px rgba(255,176,0,.4);}
+
+  .banner-insight{
+    margin:.9rem;border:1px solid var(--phos);background:rgba(57,255,20,.05);
+    padding:.8rem 1rem;font-size:.82rem;color:var(--green-mid);
+  }
+  .banner-insight .bi-tag{
+    font-size:.62rem;letter-spacing:.14em;background:var(--phos);color:var(--bg);
+    padding:.06rem .45rem;text-shadow:none;margin-right:.5rem;
+  }
+  .banner-insight b{color:var(--phos);font-weight:normal;}
+
+  .aside-note{margin:.9rem;border-left:2px solid var(--green-dim);padding:.5rem .8rem;font-size:.72rem;color:var(--green-dim);}
+
+  .gap-link{display:block;margin:.9rem;text-align:center;}
+  .gap-card{
+    display:inline-flex;flex-direction:column;align-items:center;gap:.3rem;
+    border:1px dashed var(--amber);padding:.8rem 1.4rem;color:var(--amber);
+    text-decoration:none;background:rgba(255,176,0,.04);
+  }
+  .gap-card .qm{font-size:2rem;line-height:1;animation:softblink 1.6s steps(1) infinite;text-shadow:0 0 10px var(--amber);}
+  .gap-card .lbl{font-size:.68rem;letter-spacing:.14em;}
+  @keyframes softblink{50%{opacity:.25;}}
+
+  /* == CLIMAX ================================================ */
+  .climax{
+    border:1px solid var(--phos);
+    box-shadow:0 0 25px rgba(57,255,20,.18),inset 0 0 40px rgba(57,255,20,.05);
+    background:var(--overlay);
+    padding:1.8rem 1.4rem 2rem;
+  }
+  .climax-head{text-align:center;margin-bottom:1.6rem;}
+  .climax-head .sec-tag{background:var(--phos);}
+  .climax-head h2{
+    font-size:clamp(1.2rem,4vw,1.9rem);letter-spacing:.1em;color:var(--phos);
+    text-shadow:0 0 10px #39FF14,0 0 30px rgba(57,255,20,.5);
+    margin-top:.6rem;text-transform:uppercase;
+  }
+  .ba-grid{display:grid;grid-template-columns:1fr auto 1fr;gap:1rem;align-items:stretch;margin-bottom:1.6rem;}
+  @media(max-width:700px){.ba-grid{grid-template-columns:1fr;}}
+  .ba-card{border:1px solid var(--border);background:var(--surface);padding:1rem 1.1rem;}
+  .ba-card h4{font-size:.72rem;letter-spacing:.14em;margin-bottom:.6rem;}
+  .ba-before h4{color:var(--green-dim);}
+  .ba-before .qm{font-size:2.4rem;text-align:center;color:var(--green-dim);opacity:.6;margin:.4rem 0;}
+  .ba-before p{color:var(--green-dim);font-size:.8rem;text-align:center;}
+  .ba-after{border-color:var(--phos);box-shadow:0 0 16px rgba(57,255,20,.15);}
+  .ba-after h4{color:var(--phos);text-shadow:0 0 8px rgba(57,255,20,.6);}
+  .ba-after p{color:var(--green-mid);font-size:.85rem;}
+  .ba-after p b{color:var(--phos);font-weight:normal;}
+  .ba-arrow{display:flex;align-items:center;justify-content:center;font-size:1.6rem;color:var(--phos);text-shadow:0 0 8px #39FF14;}
+  @media(max-width:700px){.ba-arrow{transform:rotate(90deg);}}
+
+  .formula-box{
+    border:1px solid var(--phos);background:rgba(57,255,20,.04);
+    padding:1.1rem 1.2rem;margin-bottom:1.2rem;text-align:center;
+  }
+  .formula{
+    font-size:clamp(.95rem,2.6vw,1.35rem);letter-spacing:.03em;color:var(--phos);
+    text-shadow:0 0 10px #39FF14,0 0 24px rgba(57,255,20,.5);
+    margin-bottom:.6rem;word-break:break-word;
+  }
+  .formula-note{font-size:.78rem;color:var(--green-mid);}
+  .formula-note b{color:var(--amber);text-shadow:0 0 6px rgba(255,176,0,.4);font-weight:normal;}
+
+  .gates-note{
+    border:1px dashed var(--danger-bright);background:rgba(139,0,0,.08);
+    padding:.8rem 1rem;font-size:.8rem;color:var(--danger-bright);margin-bottom:1.2rem;
+  }
+  .gates-note b{text-shadow:0 0 6px rgba(255,59,47,.5);}
+
+  .deliverables{display:flex;gap:.8rem;flex-wrap:wrap;margin-bottom:1.2rem;}
+  .deliv{border:1px solid var(--green-mid);background:var(--surface);padding:.4rem .8rem;font-size:.75rem;color:var(--green-mid);}
+  .deliv b{color:var(--phos);font-weight:normal;}
+
+  .scope-note{font-size:.74rem;color:var(--green-dim);border-top:1px dashed var(--border);padding-top:.8rem;}
+
+  /* == EPILOGUE — REPRISE DE SESSION ========================= */
+  .reprise-frame{border:1px solid var(--amber);background:rgba(255,176,0,.03);padding:1.1rem 1.2rem;position:relative;}
+  .reprise-frame::before,.reprise-frame::after{
+    content:"+";position:absolute;color:var(--amber);font-size:.9rem;line-height:1;text-shadow:0 0 6px var(--amber);
+  }
+  .reprise-frame::before{top:-0.5em;left:-0.32em;}
+  .reprise-frame::after{bottom:-0.5em;right:-0.32em;}
+  .revision-arc{display:grid;grid-template-columns:1fr auto 1fr;gap:1rem;align-items:stretch;margin:1.4rem 0;}
+  @media(max-width:700px){.revision-arc{grid-template-columns:1fr;}}
+  .rv-card{border:1px solid var(--border);background:var(--surface);padding:.9rem 1rem;}
+  .rv-card h4{font-size:.7rem;letter-spacing:.14em;margin-bottom:.55rem;}
+  .rv-v1{opacity:.75;}
+  .rv-v1 h4{color:var(--green-dim);}
+  .rv-v1 p{color:var(--green-dim);font-size:.82rem;text-decoration:line-through;text-decoration-color:rgba(139,0,0,.6);}
+  .rv-v2{border-color:var(--phos);box-shadow:0 0 14px rgba(57,255,20,.15);}
+  .rv-v2 h4{color:var(--phos);text-shadow:0 0 8px rgba(57,255,20,.6);}
+  .rv-v2 p{color:var(--green-mid);font-size:.85rem;}
+  .rv-v2 p b{color:var(--phos);font-weight:normal;}
+  .rv-arrow{display:flex;align-items:center;justify-content:center;font-size:1.4rem;color:var(--amber);text-shadow:0 0 8px var(--amber);}
+  @media(max-width:700px){.rv-arrow{transform:rotate(90deg);}}
+
+  .col3-strip{margin:1.6rem 0;}
+  .col3-nodes{display:grid;grid-template-columns:repeat(6,1fr);gap:.5rem;margin-bottom:.4rem;}
+  @media(max-width:700px){.col3-nodes{grid-template-columns:repeat(3,1fr);}}
+  .c3n{border:1px solid var(--col3);background:rgba(255,59,47,.05);padding:.5rem .3rem;text-align:center;}
+  .c3n .c3n-id{display:block;font-size:.78rem;color:var(--col3);text-shadow:0 0 6px var(--col3);letter-spacing:.08em;}
+  .c3n .c3n-arrow{display:block;color:var(--green-dim);font-size:.85rem;margin-top:.25rem;}
+  .col3-bus{
+    border:1px solid var(--amber);background:rgba(255,176,0,.06);text-align:center;
+    padding:.6rem .8rem;font-size:.76rem;color:var(--amber);letter-spacing:.06em;
+    text-shadow:0 0 6px rgba(255,176,0,.4);
+  }
+  .col3-bus b{text-shadow:0 0 8px rgba(255,176,0,.6);}
+  .col3-usage{display:flex;gap:.7rem;flex-wrap:wrap;margin-top:.6rem;font-size:.76rem;}
+  .col3-usage span{border:1px solid var(--border);background:var(--surface);padding:.35rem .7rem;color:var(--green-mid);flex:1;min-width:200px;}
+  .col3-usage span b{color:var(--phos);font-weight:normal;}
+
+  .closure-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;margin:1.4rem 0;}
+  .cl-card{border:1px solid var(--border);background:var(--surface);padding:.85rem .95rem;}
+  .cl-card .cl-tag{
+    display:inline-block;font-size:.62rem;letter-spacing:.1em;color:var(--bg);
+    background:var(--green-mid);padding:.06rem .45rem;text-shadow:none;margin-bottom:.5rem;
+  }
+  .cl-card p{color:var(--green-mid);font-size:.82rem;}
+  .cl-card p b{color:var(--phos);font-weight:normal;}
+  .cl-card code{color:var(--amber);}
+
+  /* == PIPELINE FLOW ========================================= */
+  .pipeline-flow{display:flex;flex-wrap:wrap;gap:.4rem;justify-content:center;align-items:stretch;margin-bottom:1.8rem;}
+  .pf-node{
+    border:1px solid var(--border);background:var(--surface);padding:.7rem .8rem;
+    min-width:130px;text-align:center;font-size:.72rem;position:relative;
+  }
+  .pf-node .pf-letter{display:block;font-size:1.1rem;color:var(--phos);text-shadow:0 0 8px #39FF14;margin-bottom:.2rem;}
+  .pf-node .pf-name{color:var(--green-mid);letter-spacing:.03em;}
+  .pf-node.pf-e{border-color:var(--amber);box-shadow:0 0 10px rgba(255,176,0,.2);}
+  .pf-node.pf-e .pf-letter{color:var(--amber);text-shadow:0 0 8px var(--amber);}
+  .pf-arrow{display:flex;align-items:center;color:var(--green-dim);font-size:1.1rem;}
+
+  .final-log{margin-top:1.4rem;font-size:.84rem;}
+  .final-log h3{font-size:.76rem;letter-spacing:.16em;color:var(--green-dim);
+    margin-bottom:.7rem;border-bottom:1px dashed var(--border);padding-bottom:.3rem;}
+  .final-log .fl{padding:.4rem 0 .4rem 1.3rem;position:relative;color:var(--green-mid);}
+  .final-log .fl::before{content:">>";position:absolute;left:0;color:var(--green-dim);font-size:.72rem;top:.6em;}
+  .final-log .fl b{color:var(--phos);font-weight:normal;text-shadow:0 0 6px rgba(57,255,20,.4);}
+  .final-log .fl.amber-line b{color:var(--amber);text-shadow:0 0 6px rgba(255,176,0,.4);}
+
+  .stamp{
+    margin:1.6rem auto 0;max-width:640px;text-align:center;
+    border:2px solid var(--phos);padding:1rem 1.2rem;
+    color:var(--phos);letter-spacing:.1em;font-size:.9rem;
+    text-shadow:0 0 8px #39FF14,0 0 20px rgba(57,255,20,.4);
+    box-shadow:0 0 18px rgba(57,255,20,.25),inset 0 0 18px rgba(57,255,20,.07);
+    text-transform:uppercase;
+  }
+  .stamp small{display:block;font-size:.66rem;color:var(--green-mid);letter-spacing:.18em;margin-top:.4rem;text-shadow:none;}
+
+  footer{
+    margin-top:4rem;border-top:1px solid var(--border);padding-top:1rem;
+    font-size:.68rem;color:var(--green-dim);letter-spacing:.06em;text-align:center;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="bootline">ROBCO INDUSTRIES (TM) TERMLINK PROTOCOL — VAULT 42 · ZAX v22.10m<br>
+    &gt; ACCÈS ARCHIVES SUPERVISION ...... <span class="glow">AUTORISÉ</span><br>
+    &gt; CHARGEMENT SESSION-20260706 ..... <span class="glow">OK</span><br>
+    &gt; RELECTURE COMPLÉMENTAIRE 20260831 <span class="glow">OK</span><br>
+    &gt; REPRISE SESSION 20260831·22:40 ... <span class="glow">CLÔTURÉE</span></div>
+    <h1 class="zax-title" id="typetitle"></h1><span class="cursor" id="titlecursor"></span>
+    <p class="zax-sub">Brainstorming BMAD — du message brut du joueur à la décision fiable de ZAX (personnalité, karma, réponse).</p>
+    <div class="statusbar">
+      <span><i class="led ok"></i>SESSION <b>COMPLÈTE</b></span>
+      <span>MODE <b>PARTNER</b></span>
+      <span>MAJ <b>2026-08-31 · 22:40</b></span>
+      <span>CASES MATRICE <b>24/24</b></span>
+      <span>DÉCISIONS <b>33</b></span>
+      <span>POINTS OUVERTS <b>0</b></span>
+      <span class="matrix-seg">LIGNES A→F <span class="on">▰</span><span class="on">▰</span><span class="on">▰</span><span class="on">▰</span><span class="special">▰</span><span class="on">▰</span></span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+<!-- ============ 1. GENESE ============ -->
+<section>
+  <div class="sec-head">
+    <span class="sec-tag">AVANT LA MATRICE</span>
+    <h2 class="sec-title">Genèse — poser le bon découpage du problème</h2>
+    <span class="sec-note">Avant de remplir la moindre case, une série d'intuitions et de questions fait émerger la structure du pipeline : un avant (perception) et un après (décision).</span>
+  </div>
+  <div class="frame">
+    <ul class="log-list">
+      <li><span class="log-tag sys">SYS</span><span class="log-kind">init</span><span class="log-txt">Ouverture de la <b>Solution Matrix</b> : 6 lignes (A–F) × 4 colonnes d'approches.</span></li>
+      <li><span class="log-tag user">AURIANE</span><span class="log-kind">insight</span><span class="log-txt">Un pipeline hybride se dessine : le <b>front</b> (A/B/C = perception) porté par mots-clés + embeddings, le <b>back</b> (D/E/F = décision) porté par maths / règles / compteurs (colonne 4).</span></li>
+      <li><span class="log-tag user">AURIANE</span><span class="log-kind">insight</span><span class="log-txt">Le <b>LLM classifieur</b> (colonne 3) fait l'unanimité comme backup à risque de crash sur toute la colonne (A3/B3/C3/F3) — un tier de secours, <b>jamais primaire</b>.</span></li>
+      <li><span class="log-tag user">AURIANE</span><span class="log-kind">insight</span><span class="log-txt"><b>A2 fort</b> : les embeddings servent à grouper les idées similaires (gain de process en aval), mais le <b>découpage lui-même</b> reste non résolu (A1 ne fait que taguer, A4 reste à tester).</span></li>
+      <li><span class="log-tag user">AURIANE</span><span class="log-kind">insight</span><span class="log-txt"><b>D4/E4/F4 forts</b> : karma = maths sur critères perso, choix de personnalité = logique sur triggers, imposteur = compteur de fraudes. Le back du moteur est déterministe — rassurant pour le terrain.</span></li>
+      <li><span class="log-tag user">AURIANE</span><span class="log-kind">insight</span><span class="log-txt"><b>B4 inadapté</b>, explicitement : la détection Faction/Personnage ne peut pas être probabiliste — on ne joue pas avec des probas sur une identité.</span></li>
+      <li><span class="log-tag coach">COACH</span><span class="log-kind">question</span><span class="log-txt">Sur A (découragée) : et si on ne découpait <b>jamais</b> ? Projeter le message entier contre chaque sujet connu et récolter ceux qui s'allument — classer sans diviser.</span></li>
+      <li><span class="log-tag coach">COACH</span><span class="log-kind">question</span><span class="log-txt">Sur B4 : le mot « inadapté » vise-t-il les probas OU aussi le lookup exact ? Un match exact contre la table <code>profiles</code> est déterministe, pas une proba — et devrait être la 1ère brique de B.</span></li>
+      <li><span class="log-tag coach">COACH</span><span class="log-kind">question</span><span class="log-txt">Frontière C/D : le comptage « X messages abordant un sujet avant validation karma » vit-il en C (détection) ou en D (karma) ? À tracer nettement.</span></li>
+      <li><span class="log-tag coach">COACH</span><span class="log-kind">question</span><span class="log-txt">Sur D4 : formule karma additive simple ? anti-farm ? decay temporel ? Comment le template encode « perso sans karma » (l'Archiviste) ?</span></li>
+      <li><span class="log-tag coach">COACH</span><span class="log-kind">question</span><span class="log-txt">Sur E4 : les règles de bascule (PRIO + TIME + DISJ-SPEC→EXIT) — comment choisir show-up (une perso en retrait prend la main) vs shutdown (l'active se coupe) ? Le forçage orga override-t-il tout ?</span></li>
+      <li><span class="log-tag coach">COACH</span><span class="log-kind">insight</span><span class="log-txt">Ligne F (imposteur) déjà ~90% résolue par <b>DEC-06</b> (lookup existe/vivant/présent + compteur X essais/Y min → Le Gardien). F1–F3 ne seraient que des raffinements optionnels.</span></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============ 2. SOLUTION MATRIX ============ -->
+<section id="matrix">
+  <div class="sec-head">
+    <span class="sec-tag">CŒUR DE SESSION</span>
+    <h2 class="sec-title">La Solution Matrix</h2>
+    <span class="sec-note">6 lignes du pipeline (A→F) × 4 colonnes d'approches. Le même code couleur traverse toutes les lignes : c'est le fil rouge du moteur de conversation.</span>
+  </div>
+
+  <div class="col-legend">
+    <div class="cl-pill cl-1"><span class="cl-h">COLONNE 1 · DÉTECTION EXACTE</span><p>Match déterministe (string, table, dictionnaire). Zéro ambiguïté quand ça matche.</p></div>
+    <div class="cl-pill cl-2"><span class="cl-h">COLONNE 2 · EMBEDDINGS / FUZZY</span><p>Similarité sémantique — pour grouper, rattraper les fautes, mesurer une proximité.</p></div>
+    <div class="cl-pill cl-3"><span class="cl-h">COLONNE 3 · LLM — TOUJOURS BACKUP</span><p>Décision unanime sur A3/B3/C3/D3/E3/F3 : jamais un primaire, jamais un point de blocage temps réel.</p></div>
+    <div class="cl-pill cl-4"><span class="cl-h">COLONNE 4 · RÈGLES / MATHS</span><p>Sortie déterministe : compteurs, seuils, cooldowns. Le « back » rassurant du moteur.</p></div>
+  </div>
+
+  <!-- ROW A -->
+  <div class="row-block">
+    <div class="row-head">
+      <span class="row-letter">A</span><span class="row-name">Découpage du texte</span>
+      <div class="row-verdict">Rôles clarifiés : <b>A4</b> découpe le texte → <b>A2</b> regroupe les sous-blocs en super-blocs → <b>A1</b> y pose les tags → <b>A3</b> sert de filet de secours.</div>
+    </div>
+    <div class="cell-grid">
+      <div class="cell c1"><div class="cell-head"><span class="cell-id">A1</span><span class="badge resolved">RÉSOLU</span></div><div class="cell-body">Tags mots-clés : dictionnaire <b>par personnalité</b> + dictionnaire générique hors-perso, pré-indexés au lancement (fixes sur le GN). Posés au niveau <b>bloc ET message entier</b> — permet des échos entre conversations sur un même thème.</div></div>
+      <div class="cell c2"><div class="cell-head"><span class="cell-id">A2</span><span class="badge resolved">RÉSOLU</span></div><div class="cell-body"><b>nomic-embed-text</b> via Ollama, en local. Clustering non supervisé : chaque bloc comparé au précédent, fusion si similaire (seuil), sinon nouveau super-bloc. Ce sont ces <b>super-blocs</b> qui deviennent les blocs traités en aval. Seuil de similarité : variable de config dédiée, initialisée à <b>0.7</b>, ajustable en live (précisé en reprise — voir l'épilogue).</div></div>
+      <div class="cell c3"><div class="cell-head"><span class="cell-id">A3</span><span class="badge resolved">RÉSOLU</span></div><div class="cell-body">Backup uniquement — la confiance reste dans le pipeline déterministe. Sortie forcée en <b>JSON structuré et validé</b>, au même format que le process de base. Chaque catch-up est loggé vers les écrans admin (principe transversal colonne 3, voir l'épilogue).</div></div>
+      <div class="cell c4"><div class="cell-head"><span class="cell-id">A4</span><span class="badge reserve">REPORTÉ</span></div><div class="cell-body">Test de segmentation par mots de ponctuation (« mais », « donc »…) pour produire des sous-blocs, regroupés ensuite via A2. Corpus de test : reporté, alimenté par un <b>mini-projet séparé déjà en cours</b> — pas de génération synthétique décidée pour l'instant (précisé en reprise).</div></div>
+    </div>
+    <div class="aside-note">Piste évoquée par le coach en cours de route — « ne jamais découper, projeter le message entier contre chaque sujet » — non reprise dans les décisions finales de la ligne A.</div>
+  </div>
+
+  <!-- ROW B -->
+  <div class="row-block">
+    <div class="row-head">
+      <span class="row-letter">B</span><span class="row-name">Détection faction / personnage</span>
+      <div class="row-verdict">Exact d'abord (<b>B1</b>) → fuzzy seulement si rien trouvé (<b>B2</b>) → LLM en filet de rattrapage, jamais bloquant (<b>B3</b>, tension tranchée en reprise — voir l'épilogue) → zéro probabilité sur une identité (<b>B4 abandonné</b>).</div>
+    </div>
+    <div class="cell-grid">
+      <div class="cell c1"><div class="cell-head"><span class="cell-id">B1</span><span class="badge resolved">RÉSOLU</span></div><div class="cell-body">Table des noms de factions/personnages accessible. Comparaison de <b>string en dur, exacte</b>. La marge d'erreur sur les noms n'est pas son rôle — c'est celui de B2. Confirmé en reprise : B1 reste le <b>premier passage, prioritaire</b> sur toute la ligne.</div></div>
+      <div class="cell c2"><div class="cell-head"><span class="cell-id">B2</span><span class="badge resolved">RÉSOLU</span></div><div class="cell-body">Seuil de similarité paramétrable via fichier de config, affiné au fil des tests — initialisé à <b>0.7</b> (précisé en reprise). S'active <b>seulement si B1 ne trouve rien</b> ; peut aussi ne rien trouver — l'utilisateur peut ne parler de personne. Devient le passage <b>secondaire</b> de la ligne.</div></div>
+      <div class="cell c3"><div class="cell-head"><span class="cell-id">B3</span><span class="badge resolved">RÉSOLU</span></div><div class="cell-body">Repassé en <b>backup pur</b>, aligné sur le pattern des autres lignes (résolution actée en reprise) : B1 reprend la priorité, B2 reste le passage secondaire, B3 tourne en <b>parallèle / async</b>, catch-up loggé vers les écrans admin plutôt que bloquant.</div></div>
+      <div class="cell c4"><div class="cell-head"><span class="cell-id">B4</span><span class="badge abandoned">ABANDONNÉ</span></div><div class="cell-body">Probabilités/maths écartées pour l'identification faction/personnage — <b>on ne joue pas avec des probas sur une identité</b>. On reste sur 100% exact via B1.</div></div>
+    </div>
+    <div class="tension-box"><b>Tension identifiée par le coach (2026-08-31, relecture) :</b> faire tourner le LLM en premier sur B3 en fait un primaire de facto — contradiction avec le principe transversal « colonne 3 = backup partout ». Proposition : garder <b>B1 comme passage systématique instantané</b>, et lancer B3 <b>en parallèle / async</b> comme enrichissement de rattrapage (entités manquées signalées en log/admin), <b>sans jamais bloquer ni gater</b> la réponse temps réel. <b>Résolue en reprise de session</b> (voir l'épilogue) : cette lecture a été retenue telle quelle.</div>
+  </div>
+
+  <!-- ROW C -->
+  <div class="row-block">
+    <div class="row-head">
+      <span class="row-letter">C</span><span class="row-name">Détection mots-clés / triggers</span>
+      <div class="row-verdict">Ligne volontairement simple : C <b>détecte</b>, le comptage / la validation des seuils vivent en D.</div>
+    </div>
+    <div class="cell-grid">
+      <div class="cell c1"><div class="cell-head"><span class="cell-id">C1</span><span class="badge resolved">RÉSOLU</span></div><div class="cell-body">Champ mots-clés <b>HARD</b> dédié dans la config de chaque personnalité. Match exact, insensible à la casse, aux accents et au pluriel.</div></div>
+      <div class="cell c2"><div class="cell-head"><span class="cell-id">C2</span><span class="badge resolved">RÉSOLU</span></div><div class="cell-body">Validation des <b>soft triggers</b> au niveau du bloc — le process A doit transmettre tous les soft triggers pour vérification.</div></div>
+      <div class="cell c3"><div class="cell-head"><span class="cell-id">C3</span><span class="badge reserve">EN RÉSERVE</span></div><div class="cell-body">Pas de LLM backup pour C, pour l'instant — trop coûteux en temps. Idée gardée de côté si besoin futur.</div></div>
+      <div class="cell c4"><div class="cell-head"><span class="cell-id">C4</span><span class="badge resolved">RÉSOLU</span></div><div class="cell-body">Le <b>comptage se fait dans D</b> ; C se limite à la détection — une tâche volontairement simple.</div></div>
+    </div>
+  </div>
+
+  <!-- ROW D -->
+  <div class="row-block">
+    <div class="row-head">
+      <span class="row-letter">D</span><span class="row-name">Karma</span>
+      <div class="row-verdict">100% déterministe, sans LLM ; agrégation par conversation + persistance en base + <b>cooldown anti-farm</b>. Formule et encodage « perso sans karma » tranchés en reprise — voir l'épilogue.</div>
+    </div>
+    <div class="cell-grid">
+      <div class="cell c1 merged-cell"><div class="cell-head"><span class="cell-id">D1</span><span class="badge merged">FUSIONNÉ → D4</span></div><div class="cell-body">Pas de brique séparée : D1 est un <b>input de D4</b>.</div></div>
+      <div class="cell c2"><div class="cell-head"><span class="cell-id">D2</span><span class="badge resolved">RÉSOLU</span></div><div class="cell-body">Comptage à <b>l'échelle de la conversation</b>, intégrant aussi la valeur de karma déjà enregistrée en base des conversations précédentes. Nouvelle valeur réenregistrée en fin de conversation si le personnage a été identifié. Formule (précisée en reprise) : <b>additif simple</b>, clampé <b>0–100</b> pour <code>karma_pj</code> et <code>karma_faction</code> séparément, sans decay temporel.</div></div>
+      <div class="cell c3"><div class="cell-head"><span class="cell-id">D3</span><span class="badge resolved">RÉSOLU</span></div><div class="cell-body">Pas de LLM pour le karma.</div></div>
+      <div class="cell c4"><div class="cell-head"><span class="cell-id">D4</span><span class="badge resolved">RÉSOLU</span></div><div class="cell-body">Mécanisme de <b>cooldown</b> : date <code>lastUsed</code> par triplet (personnage, personnalité active, sujet de karma). Si l'écart est &lt; 3h, pas de regain de karma — anti-farm. Cas <b>Archiviste</b> (perso sans karma) : pas de flag spécial, juste tous les points gagnés/perdus mis à 0 dans son template — le moteur ne voit aucune différence de traitement (précisé en reprise).</div></div>
+    </div>
+  </div>
+
+  <!-- ROW E -->
+  <div class="row-block">
+    <div class="row-head">
+      <span class="row-letter">E</span><span class="row-name">Choix de la personnalité active</span>
+      <div class="row-verdict">Framework initial (E1/E3/E4) posé dans cette session — puis <b>entièrement redessiné</b> par une découverte faite en reprenant ce memlog. Voir la section suivante.</div>
+    </div>
+    <div class="cell-grid">
+      <div class="cell c1"><div class="cell-head"><span class="cell-id">E1</span><span class="badge resolved">RÉSOLU</span></div><div class="cell-body">Déclencheur <b>HARD</b> = changement immédiat (shutdown ou appel direct d'une autre perso) ; déclencheur <b>SOFT</b> = changement seulement quand le compteur est validé. <b>PRIO</b> (0 = dieu) départage plusieurs candidates à la relève : la plus faible PRIO gagne (tirage random si ex-aequo).</div></div>
+      <div class="cell c2" style="display:flex;align-items:center;justify-content:center;">
+        <a href="#climax" class="gap-card" style="border:none;background:none;">
+          <span class="qm">?</span><span class="lbl">E2 · VOIR LA SUITE ↓</span>
+        </a>
+      </div>
+      <div class="cell c3"><div class="cell-head"><span class="cell-id">E3</span><span class="badge resolved">RÉSOLU</span></div><div class="cell-body">Pas de LLM pour le choix de personnalité.</div></div>
+      <div class="cell c4"><div class="cell-head"><span class="cell-id">E4</span><span class="badge resolved">RÉSOLU</span></div><div class="cell-body">Le gros des règles est en E1. En complément : shutdown + showup simultanés → le <b>showup a la précédence</b>. Un changement forcé par un orga en cours de conversation est un <b>override total</b> (réécriture directe de la variable personnalité courante).</div></div>
+    </div>
+  </div>
+
+  <!-- ROW F -->
+  <div class="row-block">
+    <div class="row-head">
+      <span class="row-letter">F</span><span class="row-name">Détection d'imposteur</span>
+      <div class="row-verdict">Ligne de raffinement, non urgente — priorité à déterminer en sortie de MVP.</div>
+    </div>
+    <div class="banner-insight"><span class="bi-tag">RAPPEL</span>F est déjà <b>~90% résolue par DEC-06</b> : lookup existe / vivant / présent + compteur X essais en Y minutes → déclenche <b>Le Gardien</b>. F1–F3 ne sont que des raffinements optionnels.</div>
+    <div class="cell-grid">
+      <div class="cell c1"><div class="cell-head"><span class="cell-id">F1</span><span class="badge resolved">RÉSOLU</span></div><div class="cell-body">Confirmé en reprise, après validation avec <b>Boris</b> (co-organisateur) : tant que le joueur n'est pas identifié, ZAX passe en <b>mode chit-chat</b> et cherche activement à identifier la personne — au minimum en le demandant.</div></div>
+      <div class="cell c2"><div class="cell-head"><span class="cell-id">F2</span><span class="badge reserve">HORS MVP</span></div><div class="cell-body">Hors scope MVP — idée gardée de côté pour plus tard.</div></div>
+      <div class="cell c3"><div class="cell-head"><span class="cell-id">F3</span><span class="badge resolved">RÉSOLU</span></div><div class="cell-body">Pas de LLM pour F ; le lookup standard en base suffit dans un premier temps.</div></div>
+      <div class="cell c4"><div class="cell-head"><span class="cell-id">F4</span><span class="badge resolved">RÉSOLU</span></div><div class="cell-body">Confirmé : F reste du raffinement, non urgent. Priorité de ces tâches à déterminer en sortie de MVP.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 3. CLIMAX — E2 ============ -->
+<section id="climax">
+  <div class="climax">
+    <div class="climax-head">
+      <span class="sec-tag" style="color:#0A0A0A">LA DÉCOUVERTE</span>
+      <h2>E2 n'était pas un trou</h2>
+      <p class="dim" style="font-size:.8rem;letter-spacing:.08em;margin-top:.4rem">RELECTURE DU 2026-08-31 — LA CASE VIDE ÉTAIT DÉJÀ RÉSOLUE, AILLEURS, EN MIEUX</p>
+    </div>
+
+    <div class="ba-grid">
+      <div class="ba-card ba-before">
+        <h4>AVANT — LA MATRICE EN L'ÉTAT</h4>
+        <div class="qm">E2 = ?</div>
+        <p>Seule case de tout le tableau sans décision actée dans cette session : « choix de personnalité » côté embeddings/similarité. Un trou apparent dans un pipeline par ailleurs complet.</p>
+      </div>
+      <div class="ba-arrow">▶</div>
+      <div class="ba-card ba-after">
+        <h4>APRÈS — RÉSOLU AILLEURS, EN MIEUX</h4>
+        <p>Une session dédiée et distincte — <b>brainstorm-moteur-vote-pondere-2026-07-09</b> (deep-dive complet sur la ligne E, statut <em>complete</em>) — a traité la question. Elle n'a pas seulement comblé E2 : elle a <b>remplacé tout le bloc E1–E4</b> par un moteur de score pondéré.</p>
+      </div>
+    </div>
+
+    <div class="formula-box">
+      <div class="formula">S(p) = W<sub>t</sub>·T + W<sub>k</sub>·K + W<sub>c</sub>·C + W<sub>i</sub>·I + W<sub>o</sub>·O + W<sub>e</sub>·E</div>
+      <div class="formula-note">Chaque personnalité candidate <code>p</code> reçoit un score pondéré multi-facteurs. Le terme explicitement documenté : <b>C(p)</b> = similarité embedding entre le message / l'historique récent et les champs <b>FAVS</b> / <b>LOVE</b> de la personnalité — <b>c'est la réponse à E2</b>.</div>
+    </div>
+
+    <div class="gates-note">
+      <b>+ des gates durs</b> viennent compléter le score pondéré — des conditions bloquantes qui priment sur le calcul de S(p) (dans l'esprit des règles fixes déjà posées en E1 : PRIO 0 = dieu, override orga total). Le détail précis des gates et des cinq autres facteurs (T, K, I, O, E) relève de la session dédiée vote-pondéré, hors du périmètre exhaustif de ce memlog.
+    </div>
+
+    <div class="deliverables">
+      <span class="deliv">Livrable : <b>zax_weights.yaml</b></span>
+      <span class="deliv">Livrable : <b>exemple-override-personnalite.yaml</b></span>
+    </div>
+
+    <div class="scope-note">En clair : ce qui ressemblait à une case manquante dans la Solution Matrix était en réalité le symptôme d'un chantier plus profond, déjà mené à son terme ailleurs — et dont la richesse (score multi-facteurs + gates durs) dépasse largement ce qu'un simple « embedding de similarité » (E2 pris isolément) aurait couvert.</div>
+  </div>
+</section>
+
+<!-- ============ 3bis. EPILOGUE — REPRISE DE SESSION ============ -->
+<section id="epilogue">
+  <div class="sec-head">
+    <span class="sec-tag">REPRISE · 2026-08-31 22:40</span>
+    <h2 class="sec-title">Épilogue — la dernière relecture</h2>
+    <span class="sec-note">La session est rouverte une dernière fois pour trancher les tout derniers points ouverts listés dans <code>brainstorm-intent.md §5</code> : la tension B3, l'encodage karma de l'Archiviste, la formule karma complète, les seuils A2/B2, le corpus de test A4, et F1 à revalider avec Boris.</span>
+  </div>
+
+  <div class="reprise-frame">
+    <ul class="log-list">
+      <li><span class="log-tag sys">SYS</span><span class="log-kind">direction</span><span class="log-txt">Reprise de session pour trancher les points ouverts listés dans <b>brainstorm-intent.md §5</b> : tension B3, encodage karma Archiviste, formule karma complète, seuils de similarité A2/B2, corpus de test A4, F1 à revalider avec Boris.</span></li>
+      <li><span class="log-tag user">AURIANE</span><span class="log-kind">decision</span><span class="log-txt"><b>B3 résolu</b> : B1 (exact) reste prioritaire / premier passage, B2 (embeddings) secondaire, B3 (LLM) repasse en <b>backup pur</b>, aligné sur le pattern des autres lignes. B3 tourne en parallèle/async, catch-up loggé plutôt que bloquant.</span></li>
+      <li><span class="log-tag user">AURIANE</span><span class="log-kind">decision</span><span class="log-txt">Principe transversal <b>étendu à toute la colonne 3</b> (A3/B3/C3/D3/E3/F3) : chaque catch-up/détection LLM backup émet un log qui remonte sur les écrans admin. Double usage — <b>alpha/tests</b> : debug et tuning des seuils/paramètres ; <b>live</b> : filet de rattrapage sur ce qui a été raté, visible par l'orga.</span></li>
+      <li><span class="log-tag user">AURIANE</span><span class="log-kind">decision</span><span class="log-txt">Encodage perso sans karma (Archiviste) — première passe : flag explicite <code>karma_exempt</code> (bool) placé juste avant le bloc karma dans le YAML. Le moteur D le vérifie en premier et saute tout calcul/écriture si actif.</span></li>
+      <li><span class="log-tag user">AURIANE</span><span class="log-kind">decision</span><span class="log-txt"><b>RÉVISION</b> du point Archiviste : pas besoin de flag <code>karma_exempt</code> finalement. Structure YAML inchangée — points gagnés/perdus mis à <b>0</b> sur tous les sujets pour les personas sans karma. Le moteur D calcule normalement, le delta est juste toujours nul. Plus simple, zéro branche spéciale.</span></li>
+      <li><span class="log-tag user">AURIANE</span><span class="log-kind">decision</span><span class="log-txt">Formule karma : <b>additif simple</b>, clampé <b>0–100</b> par ligne (<code>karma_pj</code> et <code>karma_faction</code> séparément), <b>pas de decay temporel</b>. Chaque delta validé (sujet ou trigger) s'ajoute/se soustrait tel quel dans les bornes.</span></li>
+      <li><span class="log-tag user">AURIANE</span><span class="log-kind">decision</span><span class="log-txt">Seuils de similarité A2 et B2 : <b>deux variables de config distinctes</b> (usages différents — A2 groupe des blocs proches, B2 confirme une identité), toutes deux initialisées à <b>0.7</b> comme point de départ, à affiner en tests/alpha via la config live déjà actée.</span></li>
+      <li><span class="log-tag user">AURIANE</span><span class="log-kind">decision</span><span class="log-txt">Corpus de test A4 : <b>reporté</b>, alimenté par un mini-projet séparé déjà en cours. Pas de génération synthétique décidée pour l'instant.</span></li>
+      <li><span class="log-tag user">AURIANE</span><span class="log-kind">decision</span><span class="log-txt"><b>F1 confirmé</b> (validé avec Boris) : mode chit-chat tant que le joueur n'est pas identifié ; ZAX cherche activement à identifier la personne, au minimum en le demandant.</span></li>
+    </ul>
+  </div>
+
+  <div class="revision-arc">
+    <div class="rv-card rv-v1">
+      <h4>V1 — PREMIÈRE PASSE</h4>
+      <p>Flag explicite <code>karma_exempt</code> (bool) dans le YAML, vérifié en premier par le moteur D : <em>branche spéciale</em> qui saute le calcul karma pour l'Archiviste.</p>
+    </div>
+    <div class="rv-arrow">▶</div>
+    <div class="rv-card rv-v2">
+      <h4>V2 — RÉVISION RETENUE</h4>
+      <p>Aucun flag. Structure YAML <b>identique</b> pour toutes les personnalités — juste des points à <b>0</b> partout dans le bloc karma de l'Archiviste. Le moteur D ne voit <b>aucune différence de traitement</b>.</p>
+    </div>
+  </div>
+
+  <div class="formula-box">
+    <div class="formula">karma ← clamp( karma<sub>précédent</sub> + Σ deltas validés , 0 , 100 )</div>
+    <div class="formula-note">Additif simple, calculé <b>séparément</b> pour <code>karma_pj</code> et <code>karma_faction</code>, sans decay temporel. Le cooldown anti-farm de D4 (&lt; 3h → pas de regain) reste la seule protection contre le farming.</div>
+  </div>
+
+  <div class="col3-strip">
+    <div class="col3-nodes">
+      <div class="c3n"><span class="c3n-id">A3</span><span class="c3n-arrow">↓</span></div>
+      <div class="c3n"><span class="c3n-id">B3</span><span class="c3n-arrow">↓</span></div>
+      <div class="c3n"><span class="c3n-id">C3</span><span class="c3n-arrow">↓</span></div>
+      <div class="c3n"><span class="c3n-id">D3</span><span class="c3n-arrow">↓</span></div>
+      <div class="c3n"><span class="c3n-id">E3</span><span class="c3n-arrow">↓</span></div>
+      <div class="c3n"><span class="c3n-id">F3</span><span class="c3n-arrow">↓</span></div>
+    </div>
+    <div class="col3-bus">TOUT CATCH-UP / DÉTECTION LLM BACKUP → <b>LOG ÉCRANS ADMIN</b></div>
+    <div class="col3-usage">
+      <span><b>Alpha / tests</b> — debug + tuning des seuils et paramètres</span>
+      <span><b>Live</b> — filet de rattrapage sur l'instant, visible par l'orga</span>
+    </div>
+  </div>
+
+  <div class="closure-grid">
+    <div class="cl-card"><span class="cl-tag">A4</span><p>Corpus de test <b>reporté</b> à un mini-projet séparé déjà en cours.</p></div>
+    <div class="cl-card"><span class="cl-tag">A2 · B2</span><p>Seuils de similarité — deux variables distinctes, <b>0.7</b> chacune, config live.</p></div>
+    <div class="cl-card"><span class="cl-tag">B3</span><p>Backup pur async, aligné sur le pattern colonne 3 des autres lignes.</p></div>
+    <div class="cl-card"><span class="cl-tag">D</span><p>Archiviste = points à <b>0</b>, pas de flag. Formule karma additive, clampée, sans decay.</p></div>
+    <div class="cl-card"><span class="cl-tag">F1</span><p>Confirmé avec <b>Boris</b> : chit-chat + demande d'identité active.</p></div>
+  </div>
+
+  <div class="banner-insight">
+    <span class="bi-tag">CLÔTURE</span>Clôture des points ouverts de <b>brainstorm-intent.md v1</b> : B3 aligné sur le pattern colonne 3 = backup + logging admin transversal étendu à toute la colonne ; Archiviste = points à 0 (pas de flag) ; formule karma = additif simple clampé 0–100 sans decay ; seuils A2/B2 = 0.7 chacun en point de départ config live ; corpus de test A4 reporté à un mini-projet séparé ; F1 confirmé avec Boris. <b>Seul point encore ouvert : aucun</b> — tous les points de la section 5 sont tranchés ou explicitement reportés.
+  </div>
+
+  <div class="stamp">
+    ★ Solution Matrix — 6/6 lignes closes ★
+    <small>REPRISE CLOSE · 2026-08-31 22:40 · ARCHIVÉE PAR ZAX v22.10m</small>
+  </div>
+</section>
+
+<!-- ============ 4. SYNTHESE FINALE ============ -->
+<section>
+  <div class="sec-head">
+    <span class="sec-tag">SYNTHÈSE FINALE</span>
+    <h2 class="sec-title">Le pipeline moteur de conversation, en 6 lignes</h2>
+    <span class="sec-note">Du message brut du joueur à la décision fiable de ZAX — le pipeline est désormais complet sur les 6 lignes A→F, points ouverts inclus (voir l'épilogue de reprise ci-dessus).</span>
+  </div>
+
+  <div class="pipeline-flow" aria-hidden="true">
+    <div class="pf-node"><span class="pf-letter">A</span><span class="pf-name">Découpage</span></div>
+    <div class="pf-arrow">→</div>
+    <div class="pf-node"><span class="pf-letter">B</span><span class="pf-name">Faction / perso</span></div>
+    <div class="pf-arrow">→</div>
+    <div class="pf-node"><span class="pf-letter">C</span><span class="pf-name">Mots-clés / triggers</span></div>
+    <div class="pf-arrow">→</div>
+    <div class="pf-node"><span class="pf-letter">D</span><span class="pf-name">Karma</span></div>
+    <div class="pf-arrow">→</div>
+    <div class="pf-node pf-e"><span class="pf-letter">E</span><span class="pf-name">Personnalité active<br>(S(p) pondéré)</span></div>
+    <div class="pf-arrow">→</div>
+    <div class="pf-node"><span class="pf-letter">F</span><span class="pf-name">Imposteur</span></div>
+  </div>
+
+  <div class="col-legend">
+    <div class="cl-pill cl-1"><span class="cl-h">COLONNE 1 · DÉTECTION EXACTE</span><p>A1 · B1 (prio) · C1 · D1(→D4) · E1 · F1</p></div>
+    <div class="cl-pill cl-2"><span class="cl-h">COLONNE 2 · EMBEDDINGS / FUZZY</span><p>A2 (seuil 0.7) · B2 (seuil 0.7, secondaire) · C(p) dans S(p) · F2 (hors MVP)</p></div>
+    <div class="cl-pill cl-3"><span class="cl-h">COLONNE 3 · LLM — TOUJOURS BACKUP</span><p>A3 · B3 (backup pur async) · C3 (en réserve) · D3 · E3 · F3 — décision unanime, jamais primaire, <b>chaque catch-up loggé vers les écrans admin</b></p></div>
+    <div class="cl-pill cl-4"><span class="cl-h">COLONNE 4 · RÈGLES / MATHS</span><p>A4 (corpus reporté) · B4 (abandonné) · C4 · D4 (karma additif clampé, Archiviste = 0) · gates durs de E · F4</p></div>
+  </div>
+
+  <div class="final-log">
+    <h3>&gt;&gt; JOURNAL DES INSIGHTS TERMINAUX</h3>
+    <div class="fl">Le pipeline se lit en deux temps : <b>perception</b> (A/B/C, front mots-clés + embeddings) puis <b>décision</b> (D/E/F, back maths/règles) — l'intuition posée dès l'ouverture de la session tient sur les 6 lignes.</div>
+    <div class="fl">Le LLM ne gagne <b>jamais</b> le rôle de primaire, sur aucune des six lignes — y compris B3, dont la tension a été tranchée en reprise : backup pur, async, catch-up loggé.</div>
+    <div class="fl amber-line">La ligne <b>E</b> est la seule à avoir été rouverte après coup : ses décisions E1/E3/E4 de cette session sont absorbées par le moteur de score pondéré S(p) de la session vote-pondéré, qui résout du même geste la case E2.</div>
+    <div class="fl">La ligne <b>F</b> (imposteur) reste volontairement en retrait : ~90% déjà couverte par DEC-06, F1 confirmé avec Boris en reprise, F2 reste hors scope — <b>raffinement optionnel hors-MVP</b>, à prioriser après livraison du cœur du moteur.</div>
+    <div class="fl">La <b>reprise de session</b> du 2026-08-31 clôt les six derniers points ouverts de <code>brainstorm-intent.md §5</code> : B3, logging transversal colonne 3, encodage karma de l'Archiviste, formule karma, seuils A2/B2, corpus de test A4, et F1. <b>Aucun point ouvert restant identifié.</b></div>
+  </div>
+
+  <div class="stamp">
+    ★ Pipeline moteur de conversation — complet sur 6 lignes ★
+    <small>SESSION CLOSE · 2026-08-31 22:40 · ARCHIVÉE PAR ZAX v22.10m</small>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    VAULT-TEC / ROBCO — DOCUMENT DE SUPERVISION INTERNE · GN FALLOUT 2027 · ASH VILLE, 2287<br>
+    « UN MESSAGE BRUT ENTRE. UNE DÉCISION FIABLE SORT. TOUT LE RESTE EST DU BRUIT. »
+  </div>
+</footer>
+
+<script>
+(function(){
+  var t = "LE MOTEUR DE CONVERSATION";
+  var el = document.getElementById('typetitle');
+  var i = 0;
+  function type(){
+    if(i <= t.length){
+      el.textContent = t.slice(0, i);
+      i++;
+      setTimeout(type, 42);
+    }
+  }
+  type();
+
+  var secs = document.querySelectorAll('section');
+  if('IntersectionObserver' in window){
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){ e.target.classList.add('vis'); io.unobserve(e.target); }
+      });
+    }, {threshold: 0.06});
+    secs.forEach(function(s){ io.observe(s); });
+  } else {
+    secs.forEach(function(s){ s.classList.add('vis'); });
+  }
+})();
+</script>
+</body>
+</html>
