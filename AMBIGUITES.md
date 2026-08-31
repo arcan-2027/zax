@@ -326,6 +326,15 @@
 - **Option C (cloud nominal + réplica local) — mise en garde forte** : elle crée **deux sources de vérité pendant l'event**, contre DEC-09, et impose une réconciliation bidirectionnelle là où §6.10 exige « aucune perte de message ».
 - **Option B (cloud pur) : écartée** — incompatible avec « offline-first pendant l'event, sans exception ».
 
+**⚠️ Fait à intégrer avant d'instruire le débat (relevé le 31/08/2026 dans `tech/INFRA.md`) : l'instance partagée est déjà hébergée en cloud, en production.** Pip-Boy a tranché le cloud (DEC-049), région West EU Ireland, projets `vttidzixtuqplafabjsu` (dev) et `iuwadzfyjrtzymglydjf` (prod), migrations et Edge Functions déployées depuis le 27/07/2026. REF-19 n'est donc **pas un choix sur table rase** mais deux questions distinctes, qu'il faut cesser de confondre :
+
+1. **Migre-t-on une instance partagée déjà vivante vers du self-hosted ?** — avec le coût et le risque que ça représente pour Pip-Boy, qui tourne dessus en production.
+2. **Sinon, que fait ZAX pendant une coupure internet le jour du GN ?** — c'est la vraie question, et elle est **plus large que l'hébergement** : cinq terminaux Raspberry Pi face à une instance injoignable. Le fallback DEC-05 (export/import de la BDD orga 1 h avant l'ouverture) suffit-il, ou faut-il un mode hors-ligne de ZAX à part entière ?
+
+C'est exactement la formulation d'**AMB-001** côté `tech/`. Le document de position doit répondre aux deux, dans cet ordre.
+
+⚠️ À noter aussi : `tech/INFRA.md` signale que la **mise en pause automatique** de l'instance par Supabase s'est déjà produite (prod en pause du 20 au 27/07/2026) et **peut se reproduire** — seule une réactivation depuis le dashboard la lève, le CLI n'en est pas capable. Un tel incident pendant les 48–72 h de l'event serait irrécupérable sans intervention manuelle **et sans internet**. Ce risque appartient au débat.
+
 ---
 
 ### REF-20 — Périmètre des écritures directes de ZAX dans l'instance Supabase partagée
@@ -394,4 +403,4 @@ Un karma total de 45 ou de 185 n'a **aucune attitude définie** ; 90 et 130 en o
 
 ---
 
-*Dernière mise à jour : 2026-08-31 — 22 ambiguïtés recensées (REF-01 à REF-22). ✅ Résolues : REF-01, REF-02, REF-03, REF-04, REF-05, REF-06, REF-07, REF-08, REF-09, REF-10, REF-11, REF-12, REF-13, REF-14, REF-15, REF-16, REF-17, REF-18, REF-20 (19). ⏳ Ouvertes : REF-19 (inter-projets, document de position à ouvrir dans `tech/docs/`), REF-21, REF-22 (3). 24 décisions actées (DEC-01 à DEC-24) dans `DECISIONS.md`.*
+*Dernière mise à jour : 2026-08-31 — 22 ambiguïtés recensées (REF-01 à REF-22). ✅ Résolues : REF-01, REF-02, REF-03, REF-04, REF-05, REF-06, REF-07, REF-08, REF-09, REF-10, REF-11, REF-12, REF-13, REF-14, REF-15, REF-16, REF-17, REF-18, REF-20 (19). ⏳ Ouvertes : REF-19 (inter-projets, document de position à ouvrir dans `tech/docs/` — attention, l'instance est **déjà en cloud et en production** côté Pip-Boy, cf. AMB-001), REF-21, REF-22 (3). 24 décisions actées (DEC-01 à DEC-24) dans `DECISIONS.md`.*
