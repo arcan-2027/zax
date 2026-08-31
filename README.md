@@ -160,7 +160,9 @@ zax-app/
 ├── sources/
 │   └── zax_20260706.md    Source de vérité lore + design (personnalités, karma, harnais)
 ├── docs/
-│   └── position-zax-auth-pipboy.md   Frontière d'authentification ZAX ↔ Pip-Boy
+│   ├── position-zax-auth-pipboy.md   Frontière d'authentification ZAX ↔ Pip-Boy
+│   └── position-confrontation-brainstorms-auriane.md
+│                                Brainstorms BMAD × décisions actées (REF-23)
 ├── ux/
 │   ├── terminal_joueur_proto.html    Proto UI terminal joueur
 │   └── dashboard_mj_proto.html       Proto UI dashboard MJ
@@ -227,6 +229,13 @@ Trois, dont un seul bloque une décision d'architecture :
 - **REF-22 — l'échelle d'attitude de karma ne couvre pas son domaine** : trous
   41–49 et 181–189, chevauchements à 90 et 130. Arbitrage narratif, mais la
   couverture totale est une exigence technique non négociable.
+- **REF-23 — conflits entre les brainstorms BMAD d'Auriane et les décisions
+  actées.** Six points à arbitrer, dont un bloquant (les palettes d'ouverture du
+  moteur de vote convoquent six personnalités hors du noyau de 8, et l'ouverture 2
+  se retrouve sans personnalité par défaut) et un prioritaire (l'embedder retenu
+  est anglophone, ce que DEC-21 interdit). Le fond est convergent — les deux
+  travaux aboutissent à la même architecture de pipeline. À mener **avec
+  Auriane** : [`docs/position-confrontation-brainstorms-auriane.md`](docs/position-confrontation-brainstorms-auriane.md).
 
 Restent aussi ouverts **côté scénaristes**, consignés dans les décisions
 concernées : commandes du Terminal Superviseur et degré de conscience du

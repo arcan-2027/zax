@@ -403,4 +403,29 @@ Un karma total de 45 ou de 185 n'a **aucune attitude définie** ; 90 et 130 en o
 
 ---
 
-*Dernière mise à jour : 2026-08-31 — 22 ambiguïtés recensées (REF-01 à REF-22). ✅ Résolues : REF-01, REF-02, REF-03, REF-04, REF-05, REF-06, REF-07, REF-08, REF-09, REF-10, REF-11, REF-12, REF-13, REF-14, REF-15, REF-16, REF-17, REF-18, REF-20 (19). ⏳ Ouvertes : REF-19 (inter-projets, document de position à ouvrir dans `tech/docs/` — attention, l'instance est **déjà en cloud et en production** côté Pip-Boy, cf. AMB-001), REF-21, REF-22 (3). 24 décisions actées (DEC-01 à DEC-24) dans `DECISIONS.md`.*
+### REF-23 — Conflits entre les brainstorms BMAD d'Auriane et les décisions actées
+
+**Source :** confrontation du 31/08/2026 des quatre sessions de brainstorm d'Auriane (merge de la PR #1 `reflexion_bmad_auriane`) aux décisions DEC-10 → DEC-24. Analyse complète : [`docs/position-confrontation-brainstorms-auriane.md`](docs/position-confrontation-brainstorms-auriane.md).
+
+**Problème :** Les brainstorms et les décisions **convergent sur l'architecture de fond** (colonne 1 exacte / colonne 2 embeddings / colonne 3 LLM toujours backup / colonne 4 maths déterministes — même principe que DEC-17, trouvé indépendamment). Six points restent en conflit franc et demandent un arbitrage à deux parties prenantes :
+
+| # | Conflit | Face à |
+|---|---|---|
+| C1 | `nomic-embed-text` retenu pour A2 et pour le terme `C(p)` du moteur de vote | DEC-21 (embedders anglophones interdits) |
+| C2 | Segmentation par ponctuation + regroupement en « super-blocs » | DEC-17 (pas de découpage thématique) |
+| C3 | Pas de filet LLM sur la ligne C (« trop coûteux en temps ») | DEC-17 (étage 3) |
+| C4 | `l_enfant` au singulier + exclusion traitée en Pauli (gating temporaire) | DEC-19 (deux modules, élimination **permanente**) |
+| C5 | Palettes d'ouverture convoquant 6 personnalités hors noyau ; `le_diplomate` est perso par défaut de l'ouverture 2 | DEC-23 (noyau de 8) |
+| C6 | « Le collapse final = la fin » : au signal bleu, une perso gagne et absorbe les autres | DEC-20 (le moteur ne calcule jamais la fin) |
+
+**Impact :** **C5 est bloquant** — avec le noyau de 8, l'ouverture 2 n'a plus de personnalité par défaut, donc plus de plancher `O(p)`, et le filet de dernier recours retombe sur `defaut_ultime: le_gardien` : un Gardien omniprésent en ouverture 2, soit l'inverse du ton visé. **C1 est prioritaire** : changer d'embedder invalide les trois seuils déjà posés (A2, B2, `embedding_seuil: 0.70`), donc à trancher **avant** toute session de calibration. C2 n'a de base empirique d'aucun côté — à mesurer, pas à trancher au jugement. C3 se lève par la machine RTX 5090 (le motif était un coût GPU qui n'existe plus).
+
+**Deux points connexes, hors conflit :**
+- **Trou de gouvernance** — le moteur de vote pondéré `S(p) = Wt·T + Wk·K + Wc·C + Wi·I + Wo·O + We·E` avec ses cinq gates remplace de fait l'étape 3 de `CLAUDE.md` §15 et **ne figure dans aucun `DEC-XX`**. Conception aboutie, deux YAML écrits et validés. Candidat au prochain passage `docs/` → `DECISIONS.md`.
+- **Sept décisions actées à amender** (DEC-10 par terminal + TTFT hors délai théâtral, DEC-12 colonne de triage, DEC-17 cooldown anti-farm et formule de karma, DEC-18/19 friction à 3 paliers, DEC-22 cue sheet) — détail en §4 du document de position.
+
+**Statut :** ⏳ À décider — arbitrage à mener **avec Auriane** ; six questions ouvertes lui sont adressées en §6 du document de position. Ne pas trancher unilatéralement : le moteur de vote est son travail.
+
+---
+
+*Dernière mise à jour : 2026-08-31 — 23 ambiguïtés recensées (REF-01 à REF-23). ✅ Résolues : REF-01, REF-02, REF-03, REF-04, REF-05, REF-06, REF-07, REF-08, REF-09, REF-10, REF-11, REF-12, REF-13, REF-14, REF-15, REF-16, REF-17, REF-18, REF-20 (19). ⏳ Ouvertes : REF-19 (inter-projets, document de position à ouvrir dans `tech/docs/` — attention, l'instance est **déjà en cloud et en production** côté Pip-Boy, cf. AMB-001), REF-21, REF-22, REF-23 (4). 24 décisions actées (DEC-01 à DEC-24) dans `DECISIONS.md`.*
