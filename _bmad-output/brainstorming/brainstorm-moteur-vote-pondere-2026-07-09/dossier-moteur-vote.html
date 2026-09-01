@@ -156,7 +156,6 @@
     <div class="gate"><b>Kill-word (DISJ-SPEC).</b> Le mot qui arrête l'active → <code>S(active) = −∞</code>, et gros bonus à sa cible <code>EXIT</code>. La coupure sèche, déterministe.</div>
     <div class="gate"><b>Gate TIME.</b> Un challenger ne peut destituer l'active que si celle-ci a tenu ≥ son <code>TIME</code> (échanges min). Anti-nervosité.</div>
     <div class="gate"><b>ORGA-ACTV = 0.</b> Perso désactivée : exclue du vote, point.</div>
-    <div class="gate"><b>Exclusion de Pauli.</b> Combos interdits : si X est active, Y est gatée (Gardien + Enfant ne coexistent pas).</div>
     <div class="gate orga"><b>Orga force.</b> Override total : fixe la perso, ignore tous les scores, avec verrou de durée optionnel. <span class="tag">Admin</span></div>
     <div class="gate orga"><b>Défaut ultime.</b> Si tout est gaté / aucun signal : plancher d'ouverture, puis le Gardien en dernier recours (panique).</div>
   </div>
@@ -232,8 +231,7 @@
     <span class="kw">if</span> state.orga_force <span class="kw">and</span> not expired: <span class="kw">return</span> forced(state.orga_force)
 
     signals = analyse(message)          <span class="cm"># hard-words, embeddings, faction/perso</span>
-    candidates = [p <span class="kw">for</span> p <span class="kw">in</span> persos <span class="kw">if</span> p.ORGA_ACTV
-                    <span class="kw">and</span> not pauli_excluded(p, state.active)]
+    candidates = [p <span class="kw">for</span> p <span class="kw">in</span> persos <span class="kw">if</span> p.ORGA_ACTV]
 
     <span class="kw">for</span> p <span class="kw">in</span> candidates:
         p.S = Wt*T(p,signals) + Wk*K(p,state) + Wc*C(p,state) \

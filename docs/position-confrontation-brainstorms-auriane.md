@@ -128,19 +128,20 @@ qu'il faut reprendre *avec elle*, en lui donnant l'information qu'elle n'avait p
 ### C4 — `l_enfant` au singulier contre DEC-19
 
 **Le fait.** `zax_weights.yaml` ne connaît qu'un seul identifiant `l_enfant` (palette de
-l'ouverture 3, exclusions de Pauli). DEC-19 pose **deux modules plats et complets**,
-`ENFANT_EXF` et `ENFANT_DES`, en exclusion mutuelle.
+l'ouverture 3). DEC-19 pose **deux modules plats et complets**, `ENFANT_EXF` et
+`ENFANT_DES`, en exclusion mutuelle.
 
-**Le point subtil, et c'est lui qui compte.** Ses `exclusions_pauli` sont un **gating
-temporaire** : si l'une est active, l'autre est filtrée pour ce tour. DEC-19 décrit une
-**élimination permanente**, actée par un orga à la fin de l'ouverture 1. Les deux
-sémantiques ne sont pas interchangeables : si l'exclusion mutuelle des Enfants est
-implémentée en Pauli, **l'Enfant éliminé revient dès que l'autre cesse d'être active**.
+**Ma position.** Les deux Enfants relèvent du **gate `ORGA-ACTV = 0`**, qui est exactement
+le bon outil : un interrupteur d'état, persistant, déjà piloté depuis le dashboard, et
+réversible par un superadmin comme DEC-19 l'exige. Les palettes d'ouverture doivent citer
+les deux identifiants au lieu du `l_enfant` unique.
 
-**Ma position.** Les deux Enfants relèvent de son **gate n°3** (`ORGA-ACTV = 0`), qui est
-exactement le bon outil : un interrupteur d'état, persistant, déjà piloté depuis le
-dashboard, et réversible par un superadmin comme DEC-19 l'exige. Pauli reste utile pour ce
-qu'elle a conçu — les incompatibilités de ton entre personnalités coexistantes.
+> **Mise à jour du 01/09/2026.** Ce conflit portait à l'origine sur un cinquième gate, l'**exclusion
+> de Pauli** (combos de personnalités interdits, gating *temporaire*), qui aurait fait
+> **revenir l'Enfant éliminé dès que l'autre cessait d'être active** — incompatible avec
+> l'élimination *permanente* de DEC-19. Ce gate a été **retiré** de `zax_weights.yaml` et du
+> dossier de conception : il n'avait pas été prévu par l'équipe orga. C4 se réduit donc au
+> nommage de `l_enfant` dans les palettes.
 
 ### C5 — Les palettes d'ouverture contre DEC-23 · **blocage dur**
 
@@ -153,8 +154,9 @@ finance pas.
 | **2** | **`le_diplomate`** ❌ | **le_diplomate**, l_archiviste, **le_negociateur**, happiness_officer, le_gardien | `le_diplomate`, `le_negociateur` |
 | 3 | `mood_manager` ✅ | le_scientifique, l_enfant, **le_soldat_perdu**, **le_juge**, mood_manager, le_gardien | `le_soldat_perdu`, `le_juge` |
 
-Plus `la_mere` dans `exclusions_pauli`. Au total **six personnalités hors noyau** sont
-câblées dans la configuration du moteur.
+Au total **cinq personnalités hors noyau** sont câblées dans la configuration du moteur.
+*(Le décompte était de six avant le retrait de l'exclusion de Pauli, qui convoquait
+`la_mere` — voir C4.)*
 
 **Pourquoi c'est bloquant et pas cosmétique.** `le_diplomate` est la **personnalité par
 défaut de l'ouverture 2**, et son edge case « aucun trigger ne matche » repose précisément
@@ -204,15 +206,15 @@ Le cœur de son travail — la formule
 S(p) = Wt·T(p) + Wk·K(p) + Wc·C(p) + Wi·I(p) + Wo·O(p) + We·E(p)
 ```
 
-avec ses cinq gates déterministes — **remplace de fait l'étape 3 de `CLAUDE.md` §15**
+avec ses quatre gates déterministes — **remplace de fait l'étape 3 de `CLAUDE.md` §15**
 (« pas de changement / soft ou hard triggers / shutdown vs show-up »). Et cette conception
 ne figure dans **aucun `DEC-XX`**.
 
 Ce n'est pas une esquisse. C'est une conception aboutie : termes normalisés 0..1, inertie
 statique plus hystérésis à décroissance λ, température unique comme curseur de volatilité
-écrasable par ouverture, tie-break par `PRIO`, voix de fond au-delà d'un delta δ, cinq
-gates durs (kill-word avec bonus `EXIT`, gate `TIME`, `ORGA-ACTV`, exclusions de Pauli,
-override orga verrouillé), traitement explicite de sept cas limites, observabilité conçue
+écrasable par ouverture, tie-break par `PRIO`, voix de fond au-delà d'un delta δ, quatre
+gates durs (kill-word avec bonus `EXIT`, gate `TIME`, `ORGA-ACTV`, override orga
+verrouillé), traitement explicite de sept cas limites, observabilité conçue
 comme oracle de test *et* comme « météo interne » pour l'orga. Deux fichiers YAML sont
 écrits et validés.
 
@@ -360,7 +362,8 @@ donnant l'information manquante :
 | Archiviste = points à 0 (pas de flag) | DEC-18 (défaut hérité) | Compatible, même philosophie |
 | E1–E4 remplacés par `S(p)` + gates | `CLAUDE.md` §15 étape 3 | **Trou de gouvernance (§3)** |
 | Gate `ORGA-ACTV = 0` | DEC-19 (exclusion mutuelle) | Compatible — **et c'est le bon outil (C4)** |
-| `exclusions_pauli` sur `l_enfant` | DEC-19 | **Conflit C4** |
+| `l_enfant` au singulier dans les palettes | DEC-19 | **Conflit C4** |
+| ~~`exclusions_pauli`~~ | — | **Retiré le 01/09/2026** (hors périmètre orga) |
 | Palettes d'ouverture | DEC-23 (noyau de 8) | **Conflit C5** |
 | DECISION G — moteur actif en mode dégradé | DEC-10, §11 | **Améliore la décision actée** |
 | Collapse final au signal bleu | DEC-20 | **Conflit C6** |

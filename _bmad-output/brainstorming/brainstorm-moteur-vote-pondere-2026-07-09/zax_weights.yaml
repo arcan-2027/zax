@@ -83,12 +83,6 @@ gates:
   time_gate:
     actif: true
 
-  # Exclusion de Pauli : combos interdits. Si l'une est active, l'autre est gatée.
-  # (paires, symétriques)
-  exclusions_pauli:
-    - [le_gardien, l_enfant]
-    - [le_gardien, la_mere]
-
   # Filet ultime : si TOUT est gaté / aucun signal exploitable.
   defaut_ultime: le_gardien
 
