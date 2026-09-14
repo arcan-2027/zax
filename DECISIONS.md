@@ -277,6 +277,60 @@ Le **dashboard admin expose un panneau listant les vues dont ZAX dépend**, avec
 **Impact sur le code :** Création des vues `zax.v_*` et grants correspondants ; aucun `SELECT` direct sur les tables Pip-Boy dans le code ZAX ; panneau de vérification du contrat de lecture dans le dashboard admin ; §1 et §7 de `CLAUDE.md` et DEC-08 mis à jour.
 **Décidé par :** Boris (31/08/2026)
 
+### DEC-25 — Conflit C1 (REF-23) : `bge-m3` confirmé, `nomic-embed-text` n'était qu'illustratif
+
+**Date :** 01/09/2026
+**Ambiguïté résolue :** REF-23 (conflit C1, partiel)
+**Décision :** DEC-21 est **confirmée sans amendement**. La décision A2 du brainstorm d'Auriane retenant `nomic-embed-text` (« fonctionne bien en local ») était une illustration de faisabilité écrite avant DEC-21, pas un choix à préserver. Le terme `C(p)` du moteur de vote pondéré utilisera `bge-m3` comme tout le reste du pipeline d'embeddings.
+**Justification :** Un embedder anglophone dégrade silencieusement la recherche sur un corpus 100 % français — aucun test synthétique ne le révèle. Faire cohabiter deux embedders (un pour le RAG, un pour le moteur de vote) doublerait la surface de calibration et romprait DEC-21 sans bénéfice identifié.
+**Impact sur le code :** Aucun changement d'architecture. Les seuils déjà posés sur une hypothèse `nomic-embed-text` (`A2`, `B2`, `embedding_seuil: 0.70` dans `zax_weights.yaml`) sont **invalidés et repartent de zéro** avec `bge-m3` — à calibrer avant toute session de playtest, jamais après.
+**Décidé par :** Auriane (01/09/2026)
+
+### DEC-26 — Conflit C2 (REF-23) : pas de segmentation thématique en alpha, activation conditionnée à une mesure
+
+**Date :** 01/09/2026
+**Ambiguïté résolue :** REF-23 (conflit C2, partiel)
+**Décision :** DEC-17 s'applique tel quel pour l'alpha : message entier traité comme un bloc, découpage **par phrase** au-delà de trois phrases, aucune segmentation par ponctuation ni regroupement en « super-blocs » (A4/A2 du brainstorm d'Auriane). La **longueur réelle des messages joueurs est instrumentée** dès la première alpha. A4/A2 ne seront implémentées **que si** la distribution observée montre des messages assez longs pour le justifier.
+**Justification :** Aucun des deux camps ne dispose de données empiriques — Auriane le note elle-même (pas de corpus représentatif existant). C'est une question à mesurer, pas à trancher au jugement. Un joueur costumé sur une borne tape en pratique une à trois phrases, ce qui rend la segmentation thématique probablement inutile, mais « probablement » n'est pas une preuve. Sa conception A1 (tags au niveau bloc **et** message entier) reste compatible et n'est pas remise en cause.
+**Impact sur le code :** Télémétrie de longueur de message dès l'alpha (log admin) ; pas de segmenteur thématique construit tant que la mesure ne le justifie pas ; le travail de conception d'Auriane (A2/A4) est conservé en réserve pour une activation ultérieure si les données le demandent.
+**Décidé par :** Auriane (01/09/2026)
+
+### DEC-27 — Conflit C3 (REF-23) : filet LLM sur la ligne C réactivé, la contrainte GPU qui le bloquait n'existe plus
+
+**Date :** 01/09/2026
+**Ambiguïté résolue :** REF-23 (conflit C3)
+**Décision :** L'étage 3 (filet LLM à sortie JSON contrainte) de DEC-17 s'applique **aussi** à la ligne C (soft triggers, karma), contrairement à la décision C3 du brainstorm d'Auriane qui l'écartait « pour l'instant, trop coûteux en temps ».
+**Justification :** Le motif invoqué par Auriane était un coût de calcul réel et juste au moment où elle l'a écrit (6/7 juillet) : sur une GTX 1080 8 Go partagée avec le modèle de réponse, un second appel LLM était inabordable. La machine RTX 5090 32 Go (disponible depuis le 31/08/2026, DEC-15) rend un appel court à sortie JSON contrainte négligeable (~200–400 ms), y compris en cohabitation avec `bge-m3` (DEC-21). La contrainte matérielle qui justifiait l'exception a disparu ; ce n'est pas un désaccord de conception.
+**Impact sur le code :** Le filet LLM de l'étage 3 couvre la ligne C au même titre que les autres ; log admin de tout rattrapage colonne 3 (double usage : tuning des seuils en alpha, filet visible par l'orga en live).
+**Décidé par :** Auriane (01/09/2026)
+
+### DEC-28 — Conflit C4 (REF-23) : identifiants `enfant_exf` / `enfant_des` en snake_case, présents en permanence dans la palette
+
+**Date :** 14/09/2026
+**Ambiguïté résolue :** REF-23 (conflit C4, clôt le point de nommage)
+**Décision :** Les deux modules de DEC-19 sont slugifiés `enfant_exf` et `enfant_des`, en snake_case minuscule — même convention que tous les autres identifiants de `zax_weights.yaml` (`le_gardien`, `l_archiviste`, `mood_manager`...). Aucun identifiant en majuscules dans la configuration ; `ENFANT_EXF`/`ENFANT_DES` restent des labels de prose dans `CLAUDE.md`/`DECISIONS.md`, pas le slug technique. Les **deux identifiants figurent en permanence** dans la palette de l'ouverture 3 : c'est le gate `ORGA-ACTV = 0` qui retire du vote celui que l'orga a éliminé, jamais une simple absence dans la palette.
+**Justification :** Auriane confirme le principe d'implémentation « on ne veut pas une perso qui fonctionne pas comme les autres, donc on en fait deux » — pas de branche spéciale dans le moteur pour l'Enfant. Le snake_case est retenu pour rester lisible et cohérent avec le reste du fichier plutôt que d'introduire une deuxième casse d'identifiant sans règle écrite.
+**Impact sur le code :** `zax_weights.yaml` (palette ouverture 3) et `exemple-override-personnalite.yaml` mis à jour avec `enfant_exf`/`enfant_des` ; le bloc d'override de l'Enfant est désormais **deux blocs distincts**, pas un override partagé, puisque ce sont deux personnalités et non deux facettes (DEC-19). Reste ouvert pour les scénaristes : si les poids d'`enfant_des` doivent diverger de ceux d'`enfant_exf` une fois sa fiche écrite (actuellement un copié de valeurs, marqué comme tel).
+**Décidé par :** Auriane (14/09/2026)
+
+### DEC-29 — Conflit C5 (REF-23, partiel) : Le Gardien reste perso par défaut de l'ouverture 2
+
+**Date :** 14/09/2026
+**Ambiguïté résolue :** REF-23 (conflit C5, partiel — le blocage du plancher `O(p)` uniquement)
+**Décision :** `perso_par_defaut` de l'ouverture 2 devient **`le_gardien`** (au lieu de `le_diplomate`, hors noyau de 8). Le plancher `plancher_defaut: 0.30` s'applique à lui.
+**Justification :** Avec le noyau de 8 (DEC-23), l'ouverture 2 n'a plus de personnalité par défaut native, et le filet de dernier recours retombait de toute façon sur `defaut_ultime: le_gardien` — un Gardien omniprésent en ouverture 2 était présenté comme le risque à éviter (inverse du ton « on apprend à naviguer »). Auriane assume ce résultat plutôt que d'en faire un défaut accidentel : Le Gardien reste la voix par défaut de l'ouverture 2 aussi.
+**Reste ouvert (C5 non clos) :** `le_diplomate` et `le_negociateur` restent cités dans la palette de l'ouverture 2, `le_technicien` dans celle de l'ouverture 1 — trois personnalités hors noyau de 8 toujours câblées dans `zax_weights.yaml`. Cette question de catalogue (élargir DEC-23 ou nettoyer les palettes) reste **scénaristique**, à transmettre à l'équipe scénario.
+**Décidé par :** Auriane (14/09/2026)
+
+### DEC-30 — Conflit C6 (REF-23) : le collapse final est déclenché à la main par un orga
+
+**Date :** 14/09/2026
+**Ambiguïté résolue :** REF-23 (conflit C6)
+**Décision :** Au signal bleu, le moteur construit et affiche en continu le rapport de force `S(p)` entre personnalités (chacune plaidant sa fin via son champ `FIN`, DEC-20), mais **l'action finale — le collapse, la fin qui se produit — est déclenchée à la main par un orga au moment du jeu**, jamais calculée ni actionnée automatiquement par le moteur. Le moteur informe, l'orga décide et acte.
+**Justification :** Réconcilie la piste « collapse final = la fin » du brainstorm d'orchestration (mécanique dramatique juste : le GN devient une lutte pour qui ZAX devient) avec DEC-20 (« le moteur ne calcule jamais la fin gagnante »). Même patron que DEC-19 (le moteur propose un score, l'humain tranche) : cohérent avec « l'app informe, elle n'arbitre pas » et §6.11. Confirmé par Auriane et Boris.
+**Impact sur le code :** Le score `S(p)` de chaque personnalité reste affiché en dashboard pendant tout le GN comme « météo interne » ; une action orga dédiée déclenche le collapse (probablement avec la friction à 3 paliers de DEC-18/19 vu son caractère quasi irréversible) ; aucune logique de sélection automatique de fin dans le moteur de vote.
+**Décidé par :** Auriane et Boris (14/09/2026)
+
 ---
 
 ## Règles d'utilisation

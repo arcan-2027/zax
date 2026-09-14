@@ -409,28 +409,30 @@ Un karma total de 45 ou de 185 n'a **aucune attitude définie** ; 90 et 130 en o
 
 **Problème :** Les brainstorms et les décisions **convergent sur l'architecture de fond** (colonne 1 exacte / colonne 2 embeddings / colonne 3 LLM toujours backup / colonne 4 maths déterministes — même principe que DEC-17, trouvé indépendamment). Six points restent en conflit franc et demandent un arbitrage à deux parties prenantes :
 
-| # | Conflit | Face à |
-|---|---|---|
-| C1 | `nomic-embed-text` retenu pour A2 et pour le terme `C(p)` du moteur de vote | DEC-21 (embedders anglophones interdits) |
-| C2 | Segmentation par ponctuation + regroupement en « super-blocs » | DEC-17 (pas de découpage thématique) |
-| C3 | Pas de filet LLM sur la ligne C (« trop coûteux en temps ») | DEC-17 (étage 3) |
-| C4 | `l_enfant` au singulier dans les palettes d'ouverture | DEC-19 (deux modules `ENFANT_EXF` / `ENFANT_DES`) |
-| C5 | Palettes d'ouverture convoquant 6 personnalités hors noyau ; `le_diplomate` est perso par défaut de l'ouverture 2 | DEC-23 (noyau de 8) |
-| C6 | « Le collapse final = la fin » : au signal bleu, une perso gagne et absorbe les autres | DEC-20 (le moteur ne calcule jamais la fin) |
+| # | Conflit | Face à | Statut |
+|---|---|---|---|
+| C1 | `nomic-embed-text` retenu pour A2 et pour le terme `C(p)` du moteur de vote | DEC-21 (embedders anglophones interdits) | ✅ DEC-25 |
+| C2 | Segmentation par ponctuation + regroupement en « super-blocs » | DEC-17 (pas de découpage thématique) | ✅ DEC-26 |
+| C3 | Pas de filet LLM sur la ligne C (« trop coûteux en temps ») | DEC-17 (étage 3) | ✅ DEC-27 |
+| C4 | `l_enfant` au singulier dans les palettes d'ouverture | DEC-19 (deux modules `ENFANT_EXF` / `ENFANT_DES`) | ✅ DEC-28 |
+| C5 | Palettes d'ouverture convoquant 6 personnalités hors noyau ; `le_diplomate` est perso par défaut de l'ouverture 2 | DEC-23 (noyau de 8) | ⏳ partiel (✅ DEC-29 sur le plancher défaut ; catalogue hors noyau encore ouvert) |
+| C6 | « Le collapse final = la fin » : au signal bleu, une perso gagne et absorbe les autres | DEC-20 (le moteur ne calcule jamais la fin) | ✅ DEC-30 |
 
-**Impact :** **C5 est bloquant** — avec le noyau de 8, l'ouverture 2 n'a plus de personnalité par défaut, donc plus de plancher `O(p)`, et le filet de dernier recours retombe sur `defaut_ultime: le_gardien` : un Gardien omniprésent en ouverture 2, soit l'inverse du ton visé. **C1 est prioritaire** : changer d'embedder invalide les trois seuils déjà posés (A2, B2, `embedding_seuil: 0.70`), donc à trancher **avant** toute session de calibration. C2 n'a de base empirique d'aucun côté — à mesurer, pas à trancher au jugement. C3 se lève par la machine RTX 5090 (le motif était un coût GPU qui n'existe plus).
+**Impact :** **C5 est bloquant** — avec le noyau de 8, l'ouverture 2 n'a plus de personnalité par défaut, donc plus de plancher `O(p)`, et le filet de dernier recours retombe sur `defaut_ultime: le_gardien` : un Gardien omniprésent en ouverture 2, soit l'inverse du ton visé. C1, C2 et C3 sont **actés** (DEC-25, DEC-26, DEC-27, 01/09/2026) : `bge-m3` confirmé pour tout le pipeline y compris `C(p)` (seuils A2/B2/`embedding_seuil` à recalibrer), pas de segmentation thématique en alpha (mesure de longueur de message d'abord), filet LLM réactivé sur la ligne C (la contrainte GPU 1080 qui le bloquait n'existe plus).
 
 **Deux points connexes, hors conflit :**
 - **Trou de gouvernance** — le moteur de vote pondéré `S(p) = Wt·T + Wk·K + Wc·C + Wi·I + Wo·O + We·E` avec ses **quatre** gates remplace de fait l'étape 3 de `CLAUDE.md` §15 et **ne figure dans aucun `DEC-XX`**. Conception aboutie, deux YAML écrits et validés. Candidat au prochain passage `docs/` → `DECISIONS.md`. *Le 01/09/2026, le cinquième gate — l'**exclusion de Pauli** (combos de personnalités interdits) — a été **retiré** de `zax_weights.yaml` et du dossier de conception : il n'avait pas été prévu par l'équipe orga et n'entre dans aucune réflexion en cours. Restent : kill-word `DISJ-SPEC`, gate `TIME`, `ORGA-ACTV = 0`, forçage orga.*
 - **Sept décisions actées à amender** (DEC-10 par terminal + TTFT hors délai théâtral, DEC-12 colonne de triage, DEC-17 cooldown anti-farm et formule de karma, DEC-18/19 friction à 3 paliers, DEC-22 cue sheet) — détail en §4 du document de position.
 
-**Statut :** ⏳ À décider — arbitrage à mener **avec Auriane** ; six questions ouvertes lui sont adressées en §6 du document de position. Ne pas trancher unilatéralement : le moteur de vote est son travail.
+**Statut :** ⏳ Partiellement décidé — C1/C2/C3/C4/C6 actés (DEC-25/26/27/28/30) ; C5 partiellement acté (DEC-29 sur le plancher défaut). Reste ouvert : le catalogue des personnalités hors noyau dans les palettes d'ouverture (C5, scénaristique).
 
 **Précision (session du 2026-09-01, ouverture de l'activité d'arbitrage) :** **C5** (perso par défaut de l'ouverture 2 dans le noyau de 8, promotion éventuelle de `le_juge`/`le_soldat_perdu`) est **hors sujet pour Auriane** — c'est une décision **scénaristique** (choix de personnage et de ton), pas une décision d'ingénierie du moteur. Reste ouvert, mais à transmettre à l'équipe scénario plutôt qu'à trancher dans cette session. Ne pas le laisser retomber dans l'oubli : c'est le conflit **bloquant** du document (l'ouverture 2 n'a plus de plancher `O(p)` sans réponse).
 
-**Précision (session du 2026-09-01) :** **C4** est **quasi résolu**. Sa moitié bloquante (`exclusions_pauli`, un gating *temporaire* incompatible avec l'élimination *permanente* de DEC-19 — origine retrouvée dans `_bmad-output/brainstorming/brainstorm-moteur-vote-pondere-2026-07-09/.memlog.md` ligne 29 : une idée du coach BMAD en session autonome, pas un choix mûri par Auriane à partir de son modèle mental disjoncteur/trigger) a été retirée par Boris le même jour (commit `6da4195`) : le gate n'était prévu par personne côté orga. Ne reste que le point mineur de nommage : les palettes d'ouverture de `zax_weights.yaml` doivent citer `ENFANT_EXF`/`ENFANT_DES` au lieu de l'identifiant unique `l_enfant`, avec le gate `ORGA-ACTV = 0` comme mécanisme d'élimination permanente (persistant, piloté dashboard, réversible superadmin — conforme DEC-19).
+**Précision (session du 2026-09-01) :** Sa moitié bloquante (`exclusions_pauli`, un gating *temporaire* incompatible avec l'élimination *permanente* de DEC-19 — origine retrouvée dans `_bmad-output/brainstorming/brainstorm-moteur-vote-pondere-2026-07-09/.memlog.md` ligne 29 : une idée du coach BMAD en session autonome, pas un choix mûri par Auriane à partir de son modèle mental disjoncteur/trigger) a été retirée par Boris le même jour (commit `6da4195`) : le gate n'était prévu par personne côté orga.
 
-**Précision (session du 2026-09-01) :** **C6** (collapse final au signal bleu) — Auriane est **d'accord sur le fond** avec la réconciliation proposée (le moteur construit et affiche le rapport de force S(p) pendant tout le GN, **et** un orga déclenche l'action finale — conforme à DEC-20 et au patron DEC-19), mais **ne valide pas seule** : à confirmer avec Boris avant de l'écrire comme `DEC-XX`. **Ne pas oublier de revenir dessus** avec eux deux.
+**Précision (session du 2026-09-14) :** **C4 est résolu (DEC-28)**. Les palettes d'ouverture de `zax_weights.yaml` citent désormais `enfant_exf`/`enfant_des` (snake_case, alignés sur la convention du fichier) au lieu de l'identifiant unique `l_enfant`, présents en permanence dans la palette de l'ouverture 3 ; le gate `ORGA-ACTV = 0` reste le mécanisme d'élimination permanente (persistant, piloté dashboard, réversible superadmin — conforme DEC-19). `exemple-override-personnalite.yaml` porte désormais deux blocs d'override distincts (un par module) au lieu d'un override partagé.
+
+**Précision (session du 2026-09-14) :** **C6 est résolu (DEC-30)**, confirmé par Auriane **et** Boris. Le collapse final au signal bleu reste mécanique et spectacle (le moteur affiche `S(p)` en continu), mais l'action qui déclenche la fin est **actée à la main par un orga au moment du jeu** — conforme à DEC-20 et au patron DEC-19.
 
 ---
 

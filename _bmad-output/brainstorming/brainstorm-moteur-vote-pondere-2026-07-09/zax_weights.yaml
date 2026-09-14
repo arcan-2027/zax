@@ -121,14 +121,17 @@ ouvertures:
     palette: [happiness_officer, le_board, le_gardien, le_technicien]
     temperature: 0.8          # Ouv.1 : bureaucratique, stable
   "2":
-    perso_par_defaut: le_diplomate
+    perso_par_defaut: le_gardien   # DEC-29 : plancher assumé, pas un accident du noyau de 8
     plancher_defaut: 0.30
     palette: [le_diplomate, l_archiviste, le_negociateur, happiness_officer, le_gardien]
     temperature: 1.0          # Ouv.2 : on apprend à naviguer
   "3":
     perso_par_defaut: mood_manager
     plancher_defaut: 0.25
-    palette: [le_scientifique, l_enfant, le_soldat_perdu, le_juge, mood_manager, le_gardien]
+    palette: [le_scientifique, enfant_exf, enfant_des, le_soldat_perdu, le_juge, mood_manager, le_gardien]
+    # enfant_exf / enfant_des : les deux modules coexistent dans la palette en
+    # permanence (DEC-19/DEC-28) — c'est le gate ORGA-ACTV = 0 qui retire du
+    # vote celui que l'orga a éliminé, jamais la présence/absence ici.
     temperature: 1.4          # Ouv.3 : erratique, imprévisible
 
 # ---------------------------------------------------------------------------

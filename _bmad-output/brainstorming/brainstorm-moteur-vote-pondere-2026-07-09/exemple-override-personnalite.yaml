@@ -35,12 +35,26 @@ poids_locaux:
 #   DISJ-SPEC: [...]  # ses propres kill-words
 
 
-# --- Cas 3 : L'ENFANT — nerveux, volatile, sensible au "jeu" ------------------
+# --- Cas 3a : ENFANT_EXF (Exfiltration, "Charlie") — nerveux, volatile --------
 # Corruption de données récente : bascule facilement, mémoire courte.
-NAME: l_enfant
+# DEC-19 : module plat et complet, PAS une facette de "l'Enfant" générique —
+# ses poids peuvent diverger de ceux d'ENFANT_DES, ce n'est pas un copier-coller.
+NAME: enfant_exf
 poids_locaux:
   inertie: 0.40       # ne "tient" pas le contrôle longtemps
   trigger: 1.20       # ultra-réactif à ses déclencheurs (mots autour du "jeu")
 override_dynamique:
   temperature_locale: 1.6   # (optionnel) rend CETTE perso plus volatile que la moyenne
   time: 1                   # peut être destituée dès l'échange suivant
+
+
+# --- Cas 3b : ENFANT_DES (Destruction, "Alan") — même volatilité, à confirmer -
+# Placeholder repris d'ENFANT_EXF le temps que les scénaristes tranchent si sa
+# fiche (DECL/FBDN/LOVE opposés, cf. DEC-19) justifie des poids différents.
+NAME: enfant_des
+poids_locaux:
+  inertie: 0.40
+  trigger: 1.20
+override_dynamique:
+  temperature_locale: 1.6
+  time: 1
