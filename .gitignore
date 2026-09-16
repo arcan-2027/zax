@@ -6,3 +6,6 @@
 # Dépendances / build
 node_modules/
 dist/
+
+# Worktrees locaux (checkouts, pas du contenu à versionner ici)
+.claude/worktrees/
