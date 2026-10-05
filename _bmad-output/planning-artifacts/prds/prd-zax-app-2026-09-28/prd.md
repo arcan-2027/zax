@@ -2,7 +2,7 @@
 title: "PRD — ZAX MVP mono-personnalité (Le Gardien)"
 status: draft
 created: 2026-09-28
-updated: 2026-09-28
+updated: 2026-10-05
 ---
 
 # PRD : ZAX — MVP mono-personnalité (Le Gardien)
@@ -49,7 +49,7 @@ Ce n'est pas un ZAX diminué — c'est la fondation sur laquelle les 7 autres pe
 - **ZAX** — l'IA du Vault 42 simulée par le système ; dans ce MVP, une seule de ses personnalités est active.
 - **Le Gardien** — la personnalité active de ce MVP. Comportement rigide, binaire (menace/ressource), peu de nuance narrative. Fiche de référence : `sources/zax_20260706.md`.
 - **Flag autorisé/interdit** — statut binaire posé à la main par personnage, qui conditionne le comportement du Gardien envers ce personnage. Positionné en base pour ce MVP (pas d'UI de gestion — voir §6.2).
-- **Personnage** — entité du domaine Pip-Boy (PJ/PNJ), identifiée par son `nfc_uid` et lue par ZAX via une vue dédiée (jamais la table brute).
+- **Personnage** — entité du domaine Pip-Boy (PJ/PNJ), identifiée par son `nfc_uid`. Vit dans les tables Pip-Boy ; les tables `zax_` référencent ce domaine par clé étrangère directe (plus de mécanisme de vue intermédiaire — voir `AMBIGUITES.md` REF-24).
 - **Conversation** — échange en cours entre un personnage identifié à un terminal et Le Gardien.
 - **Réponse proposée** — réponse générée par le pipeline LLM pour une conversation, affichée à l'orga avant envoi effectif.
 - **Auto-envoi** — envoi automatique de la réponse proposée après un délai configurable sans intervention orga.
@@ -94,7 +94,7 @@ Avant de générer une réponse, le système récupère le flag autorisé/interd
 
 **Conséquences (testables) :**
 - Un même message envoyé par un personnage autorisé et par un personnage interdit produit des réponses différentes et cohérentes avec le statut.
-- Le flag est stocké dans une table dédiée du schéma `zax`, référencée par l'identifiant personnage du domaine Pip-Boy. **[NOTE FOR PM] Le mécanisme exact de cette référence (colonne simple sans contrainte, vue dédiée, ou FK directe vers la table Pip-Boy) n'est plus tranché** : une divergence est apparue entre l'addendum du brief (colonne simple, pas de FK, conforme à DEC-24) et une décision Auriane/Boris plus récente (FK directe). Documenté comme conflit à arbitrer avant l'architecture — voir `AMBIGUITES.md` REF-24.
+- Le flag est stocké dans une table dédiée du schéma `zax` (ex. `zax_flags_personnage`), dont la clé primaire est une clé étrangère **directe** vers la table du personnage côté Pip-Boy — pas de vue intermédiaire. Pip-Boy et ZAX ont chacun leurs tables ; les tables `zax_` peuvent référencer directement les tables Pip-Boy (décision Auriane/Boris, 2026-10-05). **[NOTE FOR PM]** Ce modèle amende DEC-24 (qui imposait des vues dédiées) ; à faire valider avec l'autorité côté Pip-Boy avant de clore l'architecture — voir `AMBIGUITES.md` REF-24.
 
 #### FR-4 : Comportement par défaut si le flag est absent
 Si le `nfc_uid` reçu n'a pas de flag posé en base (personnage jamais configuré, ou inconnu côté Pip-Boy au moment de l'identification), Le Gardien applique un défaut **interdit** — jamais un défaut neutre ou une absence de réponse.
@@ -110,7 +110,7 @@ Si le `nfc_uid` reçu n'a pas de flag posé en base (personnage jamais configur�
 **Exigences fonctionnelles :**
 
 #### FR-5 : Liste des conversations en cours
-L'orga voit, sur un écran unique, la liste des conversations actives avec, pour chacune, le nom du personnage (résolu via la vue dédiée Pip-Boy, DEC-24) et la réponse proposée.
+L'orga voit, sur un écran unique, la liste des conversations actives avec, pour chacune, le nom du personnage (résolu depuis le domaine Pip-Boy via la référence FK du flag — voir FR-3) et la réponse proposée.
 
 **Conséquences (testables) :**
 - L'orga n'a besoin de naviguer sur aucun autre écran pour voir l'ensemble des conversations actives et leurs réponses proposées (critère de succès du brief).
@@ -194,9 +194,9 @@ Le système calcule un score d'embedding entre la réponse proposée et chaque t
 
 *Chaque question ci-dessous est reportée à l'étape suivante du flux BMAD (`bmad-architecture`), qui prend cette PRD en entrée.*
 
-1. **Mécanisme de référence de la table de flag au domaine Pip-Boy** — colonne simple sans contrainte (addendum du brief, conforme DEC-24) vs FK directe vers la table brute Pip-Boy (décision Auriane/Boris plus récente, contredit DEC-24). **Bloquant avant architecture** : conflit documenté dans `AMBIGUITES.md` REF-24, à faire valider avec l'autorité côté Pip-Boy (DEC-061) avant de trancher — ne pas modifier DEC-24 sans cette validation.
+1. **Validation du modèle FK directe avec l'autorité côté Pip-Boy** — le modèle retenu (tables `zax_` avec FK directe vers les tables brutes Pip-Boy, pas de vue intermédiaire) amende DEC-24, qui répondait à un contrat posé côté Pip-Boy (DEC-061, vérifié pgTAP). **Bloquant avant architecture** : documenté dans `AMBIGUITES.md` REF-24 — à faire confirmer par qui détient l'autorité sur le schéma Pip-Boy avant de clore l'architecture.
 2. **Authentification de l'écran orga** — ce MVP ne modélise qu'un rôle, mais l'accès au dashboard nécessite-t-il déjà Supabase Auth (CLAUDE.md §5, §8), ou un accès réseau local suffit-il pour cette itération dev ?
-3. **Nom exact de la table de flag et son schéma précis** — dépend de l'issue de la question 1 (`zax_flags_personnage` proposé dans l'addendum du brief, à confirmer une fois REF-24 tranché).
+3. **Nom exact de la table de flag et son schéma précis** (`zax_flags_personnage` proposé dans l'addendum du brief, à confirmer en architecture).
 4. **Format du fichier de configuration des thèmes/mots-clés** (FR-8) et du fichier de config du délai d'auto-envoi (FR-6) — structure exacte, à décider en architecture en cohérence avec le format YAML déjà retenu pour le harnais.
 
 ## 9. Index des hypothèses
